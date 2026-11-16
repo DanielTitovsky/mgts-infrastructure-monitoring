@@ -1,0 +1,78 @@
+@use "@/scss/variables" as vars;
+
+.action-table {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background-color: #FFF;
+  margin: 55px 30px 55px 53px;
+  min-height: 344px;
+  max-height: 100%;
+  padding: 25px 31px 32px 31px;
+  border-radius: 10px;
+  align-items: flex-start;
+
+  &__title {
+    color: vars.$ADMINMAINCOLOR;
+
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 26px;
+  }
+
+  &__input {
+    margin-bottom: 15px;
+    border-radius: 5px;
+    border: 1px solid #E4E4E4;
+    padding: 15px 10px;
+    outline: none;
+    width: 100%;
+  }
+
+  &__input-checkbox {
+    width: 25px;
+    height: 25px;
+    -webkit-appearance: checkbox !important;
+  }
+
+  &__label-checkbox{
+    display: flex;
+    align-items: center;
+    gap: 25px;
+    margin-bottom: 15px;
+  }
+
+  &__input-file {
+    opacity: 0;
+    width: 0.1px;
+    height: 0.1px;
+    position: absolute;
+  }
+
+  &__input-file-label {
+    display: flex;
+    position: relative;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(26deg, vars.$ADMINMAINCOLOR, #3e669a);
+    border-radius: 5px;
+    padding: 10px 15px;
+    margin-bottom: 20px;
+    color: #fff;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  &__submit-button {
+    width: 192px;
+    height: 35px;
+    color: #FFF;
+    border: none;
+    border-radius: 5px;
+    background: vars.$ADMINMAINCOLOR;
+
+    text-align: center;
+    font-size: 16px;
+    font-weight: 400;
+  }
+}
