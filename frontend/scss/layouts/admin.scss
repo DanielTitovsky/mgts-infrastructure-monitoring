@@ -1,0 +1,134 @@
+@use "@/scss/variables" as vars;
+
+.admin-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: vars.$ADMINMAINCOLOR;
+  height: 65px;
+
+  &__title {
+    margin: auto;
+    color: #FFF;
+    text-decoration: none;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  &__leave-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: vars.$ADMINMAINTEXTCOLORLIGHT;
+    text-align: center;
+    font-size: 18px;
+    width: 124px;
+    height: 35px;
+    text-decoration: none;
+    border-radius: 5px;
+    border: 1px solid #FFF;
+    margin-right: 12px;
+    transition: all .25s ease;
+
+    &:hover {
+      opacity: .9;
+    }
+  }
+}
+
+.content {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  min-height: calc(100vh - 65px);
+
+
+  .nav-bar {
+    display: flex;
+    background: vars.$ADMINSECONDBGCOLOR;
+    position: relative;
+
+    &__panel {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px 20px;
+      gap: 5px;
+      list-style: none;
+    }
+
+    &__item {
+      display: flex;
+      width: 100%;
+    }
+
+    &__link {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      grid-gap: 5px;
+      color: #B0B0B0;
+      text-decoration: none;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 400;
+      border-radius: 5px;
+      padding: 10px 5px;
+      gap: 5px;
+      position: relative;
+      transition: all .25s ease;
+
+      .name {
+        font-size: 18px;
+        font-weight: 400;
+      }
+
+      .nav-bar__icon {
+        display: inline-flex;
+        line-height: 0;
+        color: #B0B0B0;
+      }
+
+      &:hover {
+        background: rgba(13, 71, 161, 0.08);
+        color: vars.$ADMINMAINCOLOR;
+
+        .nav-bar__icon {
+          color: vars.$ADMINMAINCOLOR;
+        }
+      }
+
+      &.router-link-active {
+        background: rgba(13, 71, 161, 0.25);
+        color: vars.$ADMINMAINCOLOR;
+
+        &:after {
+          content: "";
+          display: block;
+          position: absolute;
+          right: -20px;
+          width: 4px;
+          height: 100%;
+          flex-shrink: 0;
+          border-radius: 5px 0px 0px 5px;
+          background: vars.$ADMINMAINCOLOR;
+        }
+
+        .nav-bar__icon {
+          color: vars.$ADMINMAINCOLOR;
+        }
+      }
+    }
+
+    .copyright {
+      position: absolute;
+      width: 100%;
+      bottom: 1px;
+      left: 0;
+      text-align: center;
+      color: #B0B0B0;
+      font-size: 12px;
+      font-weight: 400;
+    }
+  }
+}
