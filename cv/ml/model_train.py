@@ -1,13 +1,12 @@
 from ultralytics import YOLO
 
-model = YOLO('runs/detect/train/weights/1-version.pt')
+model = YOLO('yolo-v/yolov8n.pt')
 
 model.train(
-    data='data.yaml',
-    epochs=32,
+    data='dataset/data.yaml',
+    epochs=50,
     lr0=0.001,
+    conf=0.5,
+    close_mosaic=50,
     imgsz=640,
-    project='runs/detect',
-    name='train',
-    exist_ok=True
 )
