@@ -1,6 +1,5 @@
 import logging
 import time
-
 from polars._utils import logging
 
 def status_code(db, photo_record, ai_model):
