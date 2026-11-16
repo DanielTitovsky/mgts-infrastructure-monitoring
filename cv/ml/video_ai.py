@@ -9,11 +9,11 @@ model = YOLO('best.pt') # основная тренируемая модельк
 
 # ===================   photo  ===================
 results = model.predict(
-    source='train/images/1_jpg.rf.194101e4cd849d5745cc69d7a4743d83.jpg',
+    source='test/images/6_jpg.rf.266862e8b2c5b1ad83e623a1ca01c337.jpg',
     # target_size=(416, 416),
-    imgsz=352 ,
-    conf=0.25 ,
-    iou=0.45 ,
+    imgsz=640 ,
+    conf=0.4 ,
+    iou=0.1 ,
     save=True
 )
 
