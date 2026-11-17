@@ -30,5 +30,6 @@ def run_worker():
             status_code(db, photo, ai_model)
 
 if __name__ == '__worker__':
+
     run_worker()
 
