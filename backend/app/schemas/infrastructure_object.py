@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.common import blank_to_none
@@ -53,3 +55,7 @@ class InfrastructureObjectRead(BaseModel):
     lon: float | None
     status_id: int | None
     img_url: str | None
+    processed_img_url: str | None
+    processing_status: str
+    processing_error: str | None
+    processed_at: datetime | None

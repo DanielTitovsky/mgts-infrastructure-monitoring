@@ -52,6 +52,12 @@ async def update_object(
     if "status_id" in changes:
         await _ensure_status_exists(session, changes["status_id"])
 
+    # Новое фото — значит его нужно обработать заново.
+    if "img_url" in changes and changes["img_url"] != obj.img_url:
+        obj.processing_status = "pending"
+        obj.processing_attempts = 0
+        obj.processing_error = None
+
     for field, value in changes.items():
         setattr(obj, field, value)
 

@@ -51,5 +51,7 @@ class DefectRead(BaseModel):
     defect_confidence: float | None
     severity: str | None
     recommended_action: str | None
+    bbox: list[float] | None
+    source: str
     created_at: datetime
     updated_at: datetime

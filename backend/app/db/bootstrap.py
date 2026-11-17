@@ -38,5 +38,8 @@ async def bootstrap_schema() -> None:
 
     logger.info("Применяю схему %s (%d выражений)", SCHEMA_PATH, len(statements))
     async with engine.begin() as connection:
+        # API и воркер стартуют одновременно: без блокировки параллельные ALTER/CREATE
+        # могут упасть друг на друге. Блокировка снимается по окончанию транзакции.
+        await connection.exec_driver_sql("SELECT pg_advisory_xact_lock(727001)")
         for statement in statements:
             await connection.exec_driver_sql(statement)
