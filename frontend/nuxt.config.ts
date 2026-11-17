@@ -1,5 +1,11 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 
+// В Docker запросы /api/* уходят на backend-контейнер,
+// локально — на uvicorn по умолчанию.
+// Nitro отрезает совпавший префикс (/api/) перед пересылкой,
+// поэтому в target должен остаться /api.
+const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3001/api'
+
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: false },
@@ -12,7 +18,7 @@ export default defineNuxtConfig({
         },
         devProxy: {
             "/api/" : {
-                target:  "http://127.0.0.1:3001/api",
+                target:  apiProxyTarget,
                 changeOrigin: true,
             }
         }
