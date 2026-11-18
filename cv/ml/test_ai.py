@@ -1,15 +1,13 @@
 import cv2
 from ultralytics import YOLO
-import matplotlib.pyplot as plt
-import numpy as np
 
 # работа с камерой и видео
 
-model = YOLO('best.pt') # основная тренируемая моделька будет
+model = YOLO('yolo-v/2-version.pt') # основная тренируемая моделька будет
 
 # ===================   photo  ===================
 results = model.predict(
-    source='dataset/test/images/6_jpg.rf.266862e8b2c5b1ad83e623a1ca01c337.jpg',
+    source='test/images/10fc934a-4d6d-4cea-869b-bcf92bf6c77f_jpg.rf.ddc7e3eb0a7e19c475f0722a22bc4734.jpg',
     # target_size=(416, 416),
     imgsz=640 ,
     conf=0.4 ,

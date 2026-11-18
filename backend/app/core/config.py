@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     def weights_file(self) -> Path:
         if self.weights_path:
             return Path(self.weights_path)
-        return PROJECT_ROOT / "cv" / "ml" / "yolo-v" / "1-version.pt"
+        return PROJECT_ROOT / "cv" / "ml" / "yolo-v" / "2-version.pt"
 
     @property
     def cors_origin_list(self) -> list[str]:
