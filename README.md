@@ -10,7 +10,7 @@
 bash start-db.sh
 ```
 
-Скрипт соберёт и запустит `db`, `backend` и `frontend`, дождётся готовности,
+Скрипт соберёт и запустит `db`, `minio`, `backend` и `frontend`, дождётся готовности,
 применит схему и (для пустой базы) добавит демо-данные.
 
 | Сервис | Адрес |
@@ -19,6 +19,8 @@ bash start-db.sh
 | Swagger | <http://localhost:8000/docs> |
 | Healthcheck | <http://localhost:8000/health> |
 | PostgreSQL | `localhost:5432` |
+| MinIO API | <http://localhost:9000> |
+| MinIO Console | <http://localhost:9001> |
 
 Демо-вход: `admin` / `admin123`.
 

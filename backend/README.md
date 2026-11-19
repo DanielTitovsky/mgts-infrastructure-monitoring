@@ -72,6 +72,9 @@ uvicorn app.main:app --reload --port 3001
 | `PUT`/`DELETE` | `/api/statuses/{id}` | Обновление и удаление |
 | `GET`/`POST` | `/api/infrastructure-objects`, `/{id}` | Объекты инфраструктуры |
 | `PUT`/`DELETE` | `/api/infrastructure-objects/{id}` | Обновление и удаление |
+| `POST` | `/api/infrastructure-objects/{id}/photo` | Загрузка или замена фото (multipart-поле `file`) |
+| `GET` | `/api/infrastructure-objects/{id}/photo` | Фото объекта из MinIO |
+| `DELETE` | `/api/infrastructure-objects/{id}/photo` | Удаление фото |
 | `GET`/`POST` | `/api/defects`, `/api/defects/{id}` | Дефекты |
 | `PUT`/`DELETE` | `/api/defects/{id}` | Обновление и удаление |
 | `GET` | `/health` | Состояние сервиса и БД |
@@ -111,6 +114,7 @@ backend/
 │   │   ├── config.py           # настройки, читает корневой .env
 │   │   ├── security.py         # bcrypt + JWT
 │   │   ├── errors.py           # AppError и единый формат ошибок
+│   │   ├── storage.py          # MinIO/S3: загрузка и выдача фото
 │   │   └── responses.py        # конверт успешного ответа
 │   ├── db/
 │   │   ├── base.py             # DeclarativeBase
@@ -143,6 +147,10 @@ backend/
 - таблица `defects` — результаты распознавания;
 - индексы по `defects.object_id` и `infrastructure_objects."statusId"`.
 
+Фото объектов хранятся в MinIO, а в `infrastructure_objects."imgUrl"` лежит
+ключ файла вида `objects/{id}/{uuid}.jpg`. API отдаёт клиенту готовую ссылку
+`/api/infrastructure-objects/{id}/photo`, поэтому менять схему БД не нужно.
+
 Файл идемпотентный (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`),
 поэтому может применяться при каждом запуске. Отключается через `DB_BOOTSTRAP=false`.
 
@@ -159,6 +167,12 @@ backend/
 | `JWT_SECRET` | `dev-secret-change-me` | Секрет подписи токена (задать в проде) |
 | `JWT_EXPIRES_MINUTES` | `720` | Время жизни токена |
 | `AUTH_REQUIRED` | `false` | Требовать токен для CRUD-эндпоинтов |
+| `S3_ENDPOINT` | `http://localhost:9000` | Адрес MinIO/S3 (в Docker — `http://minio:9000`) |
+| `S3_ACCESS_KEY` | `minioadmin` | Логин MinIO |
+| `S3_SECRET_KEY` | `minioadmin` | Пароль MinIO |
+| `S3_BUCKET` | `mgts-objects` | Bucket для фото объектов |
+| `S3_REGION` | `us-east-1` | Регион S3 |
+| `MAX_PHOTO_SIZE_MB` | `5` | Максимальный размер фото |
 | `CORS_ORIGINS` | localhost:3000/3001 | Список origin через запятую |
 
 `AUTH_REQUIRED=false` оставлен специально: у фронтенда пока нет экрана входа,

@@ -42,6 +42,14 @@ DB_PASSWORD=admin
 DB_NAME=mtgsHack
 DB_PORT=5432
 CONTAINER_NAME=mtgs_hack_db
+BACKEND_PORT=8000
+FRONTEND_PORT=3000
+MINIO_PORT=9000
+MINIO_CONSOLE_PORT=9001
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_BUCKET=mgts-objects
+S3_ENDPOINT=http://localhost:9000
 EOF
 else
     echo "Использую существующий $ENV_FILE"
@@ -141,6 +149,9 @@ if [ "$MODE" = "--db-only" ]; then
     echo "  Database: ${DB_NAME}"
     echo "============================================"
     echo ""
+    echo "Для загрузки фото объектов поднимите MinIO:"
+    echo "  $COMPOSE_CMD up -d minio"
+    echo ""
     echo "Таблицы:"
     docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -c "\dt"
     echo ""
@@ -212,6 +223,8 @@ echo "  Frontend:    http://localhost:${FRONTEND_PORT}"
 echo "  Swagger:     http://localhost:${BACKEND_PORT}/docs"
 echo "  Healthcheck: http://localhost:${BACKEND_PORT}/health"
 echo "  PostgreSQL:  localhost:${DB_PORT} (${DB_NAME}, ${DB_USER})"
+echo "  MinIO API:   http://localhost:${MINIO_PORT:-9000}"
+echo "  MinIO UI:    http://localhost:${MINIO_CONSOLE_PORT:-9001}"
 echo ""
 echo "  Демо-вход:   admin / admin123"
 echo "  Реальные данные: useMocks: false в frontend/config.ts"
