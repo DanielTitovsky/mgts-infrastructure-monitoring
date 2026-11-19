@@ -106,7 +106,9 @@ fi
 # --- 5. Ожидание PostgreSQL ---
 echo -n "Ожидаю готовности PostgreSQL"
 for i in $(seq 1 60); do
-    if docker exec "$CONTAINER_NAME" pg_isready -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
+    # Проверяем именно TCP: во время initdb Postgres поднимает временный сервер
+    # только на unix-сокете, и pg_isready без -h отвечает «готово» слишком рано.
+    if docker exec "$CONTAINER_NAME" pg_isready -h 127.0.0.1 -p 5432 -U "$DB_USER" -d "$DB_NAME" >/dev/null 2>&1; then
         echo " — готово!"
         break
     fi

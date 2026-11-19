@@ -1,9 +1,28 @@
+"""Воркер обработки фото объектов инфраструктуры через ИИ (YOLO из папки cv).
+
+Запуск из папки backend:
+
+    python worker.py
+
+Воркер раз в ``WORKER_POLL_INTERVAL`` секунд забирает из БД один объект со
+статусом ``awaiting_processing``, скачивает его фото из MinIO (старые записи
+с путём ``/uploads/raw/...`` читаются с диска), прогоняет через модель,
+записывает найденные дефекты, статус объекта и аннотированное фото.
+
+Статусы обработки (колонка infrastructure_objects.processing_status):
+
+    awaiting_processing -> processing -> done
+                                      -> failed  (или снова awaiting_processing,
+                                                  если ещё есть попытки)
+"""
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import signal
 import sys
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass
@@ -14,10 +33,22 @@ import cv2
 from sqlalchemy import case, delete, func, select, update
 from ultralytics import YOLO
 
+from app.core import storage
 from app.core.config import settings
+from app.core.errors import AppError
+from app.core.processing import (
+    AWAITING_STATUSES,
+    PROCESSED_PREFIX,
+    STATUS_AWAITING,
+    STATUS_DONE,
+    STATUS_FAILED,
+    STATUS_PROCESSING,
+    remove_processed_image,
+)
 from app.db.bootstrap import bootstrap_schema
 from app.db.session import SessionLocal, dispose_engine
 from app.models import Defect, InfrastructureObject as Obj, Status
+from app.models.infrastructure_object import PHOTO_KEY_PREFIX
 from app.services.cv_logic import (
     CLASS_RULES,
     REQUIRED_STATUSES,
@@ -31,18 +62,23 @@ from app.services.cv_logic import (
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
+    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
 )
 logger = logging.getLogger("worker")
 
-PROCESSED_PREFIX = "/uploads/processed/"
 REQUEUE_EVERY_SECONDS = 60
+# Расширение файла, который скачиваем из MinIO, если content-type не распознан.
+_EXT_BY_CONTENT_TYPE = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+}
 
 
 @dataclass(frozen=True)
 class Job:
     id: int
-    img_url: str
+    img_key: str
     attempts: int  # уже с учётом текущей попытки
     old_processed_url: str | None
 
@@ -50,7 +86,10 @@ class Job:
 def processed_dir() -> Path:
     return settings.uploads_path / "processed"
 
-# Инференс (синхронный, вызывается через asyncio.to_thread)
+
+# ---------------------------------------------------------------------------
+# Инференс (синхронный, вызывается через asyncio.to_thread).
+# ---------------------------------------------------------------------------
 def analyze_image(
     model: YOLO,
     source: Path,
@@ -68,7 +107,9 @@ def analyze_image(
     detections: list[Detection] = []
     boxes = result.boxes
     if boxes is not None and len(boxes) > 0:
-        for bbox, conf, cls in zip(boxes.xyxyn.tolist(), boxes.conf.tolist(), boxes.cls.tolist()):
+        for bbox, conf, cls in zip(
+            boxes.xyxyn.tolist(), boxes.conf.tolist(), boxes.cls.tolist()
+        ):
             detections.append(
                 Detection(
                     class_name=str(model.names[int(cls)]),
@@ -82,7 +123,29 @@ def analyze_image(
 
     return detections, gps_from_image(source)
 
-# Работа с БД
+
+async def prepare_source(job: Job, tmp_dir: Path) -> Path:
+    """Достаёт исходное фото: из MinIO по ключу или с диска (старый /uploads/raw)."""
+    key = job.img_key or ""
+    if key.startswith(PHOTO_KEY_PREFIX):
+        data, content_type = await storage.get_object(key)
+        ext = _EXT_BY_CONTENT_TYPE.get(content_type) or Path(key).suffix or ".jpg"
+        path = tmp_dir / f"source_{job.id}{ext}"
+        path.write_bytes(data)
+        return path
+
+    if key.startswith("/uploads/raw/"):
+        return resolve_image_path(key, settings.uploads_path)
+
+    raise ValueError(
+        f"Объект ID={job.id}: неподдерживаемое значение imgUrl {key!r} "
+        f"(ожидается ключ '{PHOTO_KEY_PREFIX}...' или '/uploads/raw/...')"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Работа с БД.
+# ---------------------------------------------------------------------------
 async def get_status_map() -> dict[str, int]:
     async with SessionLocal() as session:
         statuses = (await session.scalars(select(Status))).all()
@@ -90,12 +153,13 @@ async def get_status_map() -> dict[str, int]:
 
 
 async def claim_next() -> Job | None:
+    """Атомарно берёт один объект из очереди, выставляя статус processing."""
     next_id = (
         select(Obj.id)
         .where(
-            Obj.processing_status == "pending",
-            Obj.img_url.is_not(None),
-            Obj.img_url != "",
+            Obj.processing_status.in_(AWAITING_STATUSES),
+            Obj.img_key.is_not(None),
+            Obj.img_key != "",
         )
         .order_by(Obj.id)
         .limit(1)
@@ -104,13 +168,14 @@ async def claim_next() -> Job | None:
     )
     stmt = (
         update(Obj)
-        .where(Obj.id == next_id, Obj.processing_status == "pending")
+        .where(Obj.id == next_id, Obj.processing_status.in_(AWAITING_STATUSES))
         .values(
-            processing_status="processing",
+            processing_status=STATUS_PROCESSING,
             processing_started_at=func.now(),
             processing_attempts=Obj.processing_attempts + 1,
+            processing_error=None,
         )
-        .returning(Obj.id, Obj.img_url, Obj.processing_attempts, Obj.processed_img_url)
+        .returning(Obj.id, Obj.img_key, Obj.processing_attempts, Obj.processed_img_url)
         .execution_options(synchronize_session=False)
     )
     async with SessionLocal() as session:
@@ -119,18 +184,22 @@ async def claim_next() -> Job | None:
 
     if row is None:
         return None
-    return Job(id=row[0], img_url=row[1], attempts=row[2], old_processed_url=row[3])
+    return Job(id=row[0], img_key=row[1], attempts=row[2], old_processed_url=row[3])
 
 
 async def requeue_stale() -> int:
+    """Возвращает в очередь объекты, зависшие в статусе processing."""
     threshold = func.now() - timedelta(minutes=settings.worker_stale_minutes)
     stmt = (
         update(Obj)
-        .where(Obj.processing_status == "processing", Obj.processing_started_at < threshold)
+        .where(
+            Obj.processing_status == STATUS_PROCESSING,
+            Obj.processing_started_at < threshold,
+        )
         .values(
             processing_status=case(
-                (Obj.processing_attempts >= settings.worker_max_attempts, "failed"),
-                else_="pending",
+                (Obj.processing_attempts >= settings.worker_max_attempts, STATUS_FAILED),
+                else_=STATUS_AWAITING,
             ),
             processing_error="Обработка прервана (таймаут воркера)",
         )
@@ -151,6 +220,8 @@ async def save_result(
     status_map: dict[str, int],
 ) -> None:
     async with SessionLocal() as session:
+        # Дефекты воркера пересоздаём при каждой повторной обработке фото,
+        # а ручные записи (source='manual') не трогаем.
         await session.execute(
             delete(Defect).where(Defect.object_id == job.id, Defect.source == "cv")
         )
@@ -168,7 +239,7 @@ async def save_result(
             )
 
         values: dict = {
-            "processing_status": "done",
+            "processing_status": STATUS_DONE,
             "processed_at": func.now(),
             "processing_error": None,
             "processed_img_url": processed_url,
@@ -176,7 +247,10 @@ async def save_result(
         if outcome.status and outcome.status in status_map:
             values["status_id"] = status_map[outcome.status]
         await session.execute(
-            update(Obj).where(Obj.id == job.id).values(**values).execution_options(synchronize_session=False)
+            update(Obj)
+            .where(Obj.id == job.id)
+            .values(**values)
+            .execution_options(synchronize_session=False)
         )
 
         if outcome.object_type:
@@ -196,6 +270,7 @@ async def save_result(
 
         await session.commit()
 
+
 async def mark_failed(job: Job, message: str, *, permanent: bool) -> None:
     give_up = permanent or job.attempts >= settings.worker_max_attempts
     async with SessionLocal() as session:
@@ -203,46 +278,51 @@ async def mark_failed(job: Job, message: str, *, permanent: bool) -> None:
             update(Obj)
             .where(Obj.id == job.id)
             .values(
-                processing_status="failed" if give_up else "pending",
+                processing_status=STATUS_FAILED if give_up else STATUS_AWAITING,
                 processing_error=message[:1000],
             )
             .execution_options(synchronize_session=False)
         )
         await session.commit()
 
-# Обработка одного объекта
-def remove_old_processed(old_url: str | None, keep_name: str) -> None:
-    if not old_url or not old_url.startswith(PROCESSED_PREFIX):
-        return
-    name = Path(old_url).name  # только имя файла, без путей
-    if name and name != keep_name:
-        (processed_dir() / name).unlink(missing_ok=True)
 
-
+# ---------------------------------------------------------------------------
+# Обработка одного объекта.
+# ---------------------------------------------------------------------------
 async def handle_job(job: Job, model: YOLO, status_map: dict[str, int]) -> None:
     started = time.perf_counter()
-    save_path: Path | None = None
-    logger.info("Взял в работу объект ID=%s (попытка %s): %s", job.id, job.attempts, job.img_url)
+    logger.info("Взял в работу объект ID=%s (попытка %s): %s", job.id, job.attempts, job.img_key)
 
-    try:
-        source = resolve_image_path(job.img_url, settings.uploads_path)
-        save_name = f"obj_{job.id}_{uuid.uuid4().hex[:8]}.jpg"
-        save_path = processed_dir() / save_name
-        detections, gps = await asyncio.to_thread(analyze_image, model, source, save_path)
-        outcome = build_outcome(detections, high_confidence=settings.cv_high_confidence)
-        await save_result(job, outcome, f"{PROCESSED_PREFIX}{save_name}", gps, status_map)
-    except (ValueError, FileNotFoundError) as exc:
-        logger.error("Объект ID=%s отклонён: %s", job.id, exc)
-        await mark_failed(job, f"{type(exc).__name__}: {exc}", permanent=True)
-        return
-    except Exception as exc:
-        logger.exception("Ошибка при обработке объекта ID=%s", job.id)
-        if save_path is not None:
-            save_path.unlink(missing_ok=True)
-        await mark_failed(job, f"{type(exc).__name__}: {exc}", permanent=False)
-        return
+    with tempfile.TemporaryDirectory(prefix="mgts-cv-") as tmp:
+        tmp_dir = Path(tmp)
+        try:
+            source = await prepare_source(job, tmp_dir)
+            save_name = f"obj_{job.id}_{uuid.uuid4().hex[:8]}.jpg"
+            processed_dir().mkdir(parents=True, exist_ok=True)
+            save_path = processed_dir() / save_name
 
-    remove_old_processed(job.old_processed_url, save_name)
+            detections, gps = await asyncio.to_thread(analyze_image, model, source, save_path)
+            outcome = build_outcome(detections, high_confidence=settings.cv_high_confidence)
+            await save_result(job, outcome, f"{PROCESSED_PREFIX}{save_name}", gps, status_map)
+        except (ValueError, FileNotFoundError) as exc:
+            logger.error("Объект ID=%s отклонён: %s", job.id, exc)
+            await mark_failed(job, f"{type(exc).__name__}: {exc}", permanent=True)
+            return
+        except AppError as exc:
+            # 503 от MinIO — временная проблема, попробуем ещё раз; 404 — нет смысла.
+            retryable = exc.status_code >= 500
+            logger.error(
+                "Объект ID=%s: ошибка хранилища (%s): %s", job.id, exc.status_code, exc
+            )
+            await mark_failed(job, f"{type(exc).__name__}: {exc}", permanent=not retryable)
+            return
+        except Exception as exc:
+            logger.exception("Ошибка при обработке объекта ID=%s", job.id)
+            await mark_failed(job, f"{type(exc).__name__}: {exc}", permanent=False)
+            return
+
+    # Успешно обработали — предыдущая аннотированная картинка не нужна.
+    remove_processed_image(job.old_processed_url, settings.uploads_path)
     logger.info(
         "Готово ID=%s за %.2f с: %s%s",
         job.id,
@@ -251,7 +331,10 @@ async def handle_job(job: Job, model: YOLO, status_map: dict[str, int]) -> None:
         f", координаты из EXIF: {gps}" if gps else "",
     )
 
-# Главный цикл
+
+# ---------------------------------------------------------------------------
+# Главный цикл.
+# ---------------------------------------------------------------------------
 async def sleep_or_stop(stop: asyncio.Event, seconds: float) -> None:
     try:
         await asyncio.wait_for(stop.wait(), timeout=seconds)
@@ -299,7 +382,7 @@ async def run_worker() -> None:
         except (NotImplementedError, RuntimeError):  # Windows
             pass
 
-    logger.info("Воркер запущен и ждёт новые фото...")
+    logger.info("Воркер запущен и ждёт объекты со статусом %s...", STATUS_AWAITING)
     last_requeue = 0.0
     warned_statuses = False
 
@@ -317,7 +400,8 @@ async def run_worker() -> None:
                 if missing:
                     if not warned_statuses:
                         logger.warning(
-                            "В таблице statuses нет: %s. Жду (запустите seed.py).", ", ".join(missing)
+                            "В таблице statuses нет: %s. Жду (запустите seed.py).",
+                            ", ".join(missing),
                         )
                         warned_statuses = True
                     await sleep_or_stop(stop, 5)

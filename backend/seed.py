@@ -29,6 +29,7 @@ DEMO_STATUSES = [
     {"type": "ok", "description": "Объект в нормативном состоянии"},
     {"type": "check_required", "description": "Требуется проверка"},
     {"type": "repair_required", "description": "Требуется ремонт"},
+    {"type": "unrecognized", "description": "Не распознано"},
 ]
 
 DEMO_OBJECTS = [

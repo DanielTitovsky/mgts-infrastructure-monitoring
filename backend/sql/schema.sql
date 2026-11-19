@@ -11,6 +11,19 @@ ALTER TABLE infrastructure_objects
     ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION,
     ADD COLUMN IF NOT EXISTS lon DOUBLE PRECISION;
 
+-- Очередь обработки фото ИИ-воркером.
+-- processing_status: awaiting_processing -> processing -> done|failed.
+ALTER TABLE infrastructure_objects
+    ADD COLUMN IF NOT EXISTS processing_status VARCHAR(32),
+    ADD COLUMN IF NOT EXISTS processing_started_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS processing_attempts INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS processing_error TEXT,
+    ADD COLUMN IF NOT EXISTS processed_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS processed_img_url TEXT;
+
+CREATE INDEX IF NOT EXISTS infrastructure_objects_processing_status_idx
+    ON infrastructure_objects (processing_status);
+
 -- Признаки дефектов, найденные воркером/ИИ.
 CREATE TABLE IF NOT EXISTS defects (
     id                  SERIAL PRIMARY KEY,
@@ -35,3 +48,9 @@ CREATE INDEX IF NOT EXISTS defects_object_id_idx
 
 CREATE INDEX IF NOT EXISTS infrastructure_objects_status_id_idx
     ON infrastructure_objects ("statusId");
+
+-- Статус для случая, когда фото обработано, но модель ничего не распознала.
+-- Вставляется идемпотентно при каждом старте API/воркера.
+INSERT INTO statuses (type, description)
+SELECT 'unrecognized', 'Не распознано'
+WHERE NOT EXISTS (SELECT 1 FROM statuses WHERE type = 'unrecognized');

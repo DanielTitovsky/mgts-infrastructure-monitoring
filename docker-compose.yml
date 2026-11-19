@@ -23,7 +23,9 @@ services:
       start_period: 5s
 
   minio:
-    image: minio/minio:latest
+    # Официальные образы minio/minio удалены с Docker Hub (и из quay.io).
+    # pgsty/minio — community-форк с тем же entrypoint и API; тег зафиксирован.
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     container_name: ${MINIO_CONTAINER_NAME:-mtgs_hack_minio}
     restart: unless-stopped
     command: server /data --console-address ":9001"
@@ -53,6 +55,9 @@ services:
       # Каталог для /api/upload и результатов обработки.
       # PROJECT_ROOT в контейнере равен "/", поэтому путь задаётся явно.
       UPLOADS_DIR: /app/uploads
+    volumes:
+      # Общий с воркером том: туда пишутся /uploads/raw и /uploads/processed.
+      - uploads_data:/app/uploads
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
@@ -66,6 +71,31 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+
+  # ИИ-воркер: забирает объекты со статусом awaiting_processing из БД,
+  # скачивает фото из MinIO и прогоняет через YOLO из папки cv.
+  worker:
+    build:
+      context: .
+      dockerfile: backend/worker.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      S3_ENDPOINT: http://minio:9000
+      UPLOADS_DIR: /app/uploads
+      # Веса модели монтируются с хоста, чтобы их можно было менять без сборки образа.
+      WEIGHTS_PATH: /weights/2-version.pt
+    volumes:
+      - uploads_data:/app/uploads
+      - ./cv/ml/yolo-v:/weights:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      minio:
+        condition: service_started
 
   frontend:
     build:
@@ -90,3 +120,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  uploads_data:

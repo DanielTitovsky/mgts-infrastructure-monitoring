@@ -14,10 +14,18 @@
 bash start-db.sh
 ```
 
-Compose поднимет PostgreSQL, API и фронтенд. Swagger будет доступен на
-<http://localhost:8000/docs>, API healthcheck — на <http://localhost:8000/health>.
-Внутри docker-сети фронтенд обращается к API по адресу `http://backend:8000`
-(передаётся через `API_PROXY_TARGET` в `docker-compose.yml`).
+Compose поднимет PostgreSQL, MinIO, API, ИИ-воркер и фронтенд. Swagger будет
+доступен на <http://localhost:8000/docs>, API healthcheck — на
+<http://localhost:8000/health>. Внутри docker-сети фронтенд обращается к API по
+адресу `http://backend:8000` (передаётся через `API_PROXY_TARGET` в
+`docker-compose.yml`).
+
+Воркер можно запустить/перезапустить отдельно:
+
+```bash
+docker compose up -d --build worker
+docker compose logs -f worker
+```
 
 ### Локально, без Docker
 
@@ -35,8 +43,12 @@ pip install -r requirements.txt
 # 3. Демо-данные (необязательно, но удобно для проверки UI)
 python seed.py
 
-# 4. Запуск
+# 4. Запуск API
 uvicorn app.main:app --reload --port 3001
+
+# 5. В другом терминале — ИИ-воркер (нужен ML-стек из requirements-worker.txt
+#    и веса YOLO из папки cv; WEIGHTS_PATH при необходимости переопределить)
+python worker.py
 ```
 
 - Swagger: <http://127.0.0.1:3001/docs>
@@ -115,6 +127,7 @@ backend/
 │   │   ├── security.py         # bcrypt + JWT
 │   │   ├── errors.py           # AppError и единый формат ошибок
 │   │   ├── storage.py          # MinIO/S3: загрузка и выдача фото
+│   │   ├── processing.py       # константы и утилиты очереди обработки
 │   │   └── responses.py        # конверт успешного ответа
 │   ├── db/
 │   │   ├── base.py             # DeclarativeBase
@@ -122,14 +135,17 @@ backend/
 │   │   └── bootstrap.py        # применение sql/schema.sql при старте
 │   ├── models/                 # SQLAlchemy-модели таблиц
 │   ├── schemas/                # Pydantic-схемы запросов/ответов
-│   ├── services/               # бизнес-логика и запросы к БД
+│   ├── services/               # бизнес-логика и запросы к БД (cv_logic.py — разбор детекций)
+│   ├── worker.py               # ИИ-воркер: очередь -> YOLO -> дефекты/статусы
 │   └── api/
 │       ├── deps.py             # get_session, get_current_user, require_auth
 │       ├── router.py           # сборка /api
 │       └── routes/             # auth, users, statuses, objects, defects, health
 ├── sql/schema.sql              # идемпотентное дополнение схемы
 ├── seed.py                     # демо-данные
-├── requirements.txt
+├── requirements.txt            # зависимости API
+├── requirements-worker.txt     # API + PyTorch/Ultralytics/OpenCV для воркера
+├── worker.Dockerfile           # образ воркера
 └── main.py                     # запуск: uvicorn main:app
 ```
 
@@ -144,6 +160,9 @@ backend/
 
 - `users.password_hash` — для входа;
 - `infrastructure_objects.external_id`, `lat`, `lon` — для карты и таблицы;
+- `infrastructure_objects.processing_status`, `processing_started_at`,
+  `processing_attempts`, `processing_error`, `processed_at`, `processed_img_url`
+  — очередь обработки и её результаты;
 - таблица `defects` — результаты распознавания;
 - индексы по `defects.object_id` и `infrastructure_objects."statusId"`.
 
@@ -153,6 +172,31 @@ backend/
 
 Файл идемпотентный (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`),
 поэтому может применяться при каждом запуске. Отключается через `DB_BOOTSTRAP=false`.
+
+## Обработка фото ИИ (воркер)
+
+```
+POST /api/infrastructure-objects/{id}/photo
+        |  фото уходит в MinIO, объект получает processing_status = awaiting_processing
+        v
+worker.py  -- раз в WORKER_POLL_INTERVAL секунд берёт один объект из очереди
+        |  processing_status = processing
+        |  скачивает фото из MinIO (старые /uploads/raw/* — с диска)
+        |  YOLO (веса из cv/ml/yolo-v/, по умолчанию 2-version.pt)
+        |  -> дефекты в таблицу defects (source='cv'), статус ok/check_required/repair_required,
+        |     тип и координаты из EXIF (если пусты), аннотированное фото в /uploads/processed/
+        v  processing_status = done (или failed / снова awaiting_processing при ошибке)
+```
+
+Статусы в колонке `infrastructure_objects.processing_status`:
+`awaiting_processing` (в ТЗ написано `awating_processing` — тоже понимается),
+`processing`, `done`, `failed`. При замене/удалении фото счётчик попыток и
+результаты сбрасываются. Дефекты воркера пересоздаются при повторной обработке,
+ручные (`source='manual'`) не затрагиваются.
+
+Воркер запускается отдельным процессом/сервисом (`docker compose up -d worker`),
+не внутри API. Общий том `uploads_data` нужен, чтобы backend раздавал
+`/uploads/processed/*`, а веса монтируются с хоста `./cv/ml/yolo-v:/weights:ro`.
 
 ## Переменные окружения
 
@@ -174,6 +218,14 @@ backend/
 | `S3_REGION` | `us-east-1` | Регион S3 |
 | `MAX_PHOTO_SIZE_MB` | `5` | Максимальный размер фото |
 | `CORS_ORIGINS` | localhost:3000/3001 | Список origin через запятую |
+| `WEIGHTS_PATH` | `cv/ml/yolo-v/2-version.pt` | Веса YOLO для воркера |
+| `CV_MIN_CONFIDENCE` | `0.4` | Порог детекции |
+| `CV_HIGH_CONFIDENCE` | `0.75` | Порог, ниже которого рекомендация «проверить» |
+| `CV_IOU` / `CV_IMGSZ` | `0.5` / `640` | Параметры инференса |
+| `WORKER_POLL_INTERVAL` | `3` | Период опроса очереди, сек |
+| `WORKER_MAX_ATTEMPTS` | `3` | Попыток перед статусом `failed` |
+| `WORKER_STALE_MINUTES` | `5` | Таймаут зависшей задачи, мин |
+| `UPLOADS_DIR` | `<корень>/uploads` | Каталог `/uploads/raw` и `/uploads/processed` |
 
 `AUTH_REQUIRED=false` оставлен специально: у фронтенда пока нет экрана входа,
 поэтому таблицы должны открываться без токена. После добавления формы входа
@@ -182,7 +234,6 @@ CRUD-роутерам.
 
 ## Дальше по плану
 
-- `POST /api/upload` (multipart `pictures`) и очередь обработки для `worker.py`;
 - `GET /frames/{id}/image` для просмотра кадров;
 - фильтры и пагинация (`severity`, `action`, `limit`, `offset`);
 - экспорт `GET /api/defects/export?format=csv`;

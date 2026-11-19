@@ -19,7 +19,8 @@ RAW_PREFIX = "/uploads/raw/"
 STATUS_OK = "ok"
 STATUS_CHECK = "check_required"
 STATUS_REPAIR = "repair_required"
-REQUIRED_STATUSES = (STATUS_OK, STATUS_CHECK, STATUS_REPAIR)
+STATUS_UNRECOGNIZED = "unrecognized"
+REQUIRED_STATUSES = (STATUS_OK, STATUS_CHECK, STATUS_REPAIR, STATUS_UNRECOGNIZED)
 
 
 @dataclass(frozen=True)
@@ -123,7 +124,8 @@ def build_outcome(
       например колодец с классом Good), и дефектов нет -> ok.
     * Нашли только объекты, состояние которых модель не оценивает (опора, изолятор...) ->
       check_required: нельзя утверждать «всё хорошо», когда состояние не проверялось.
-    * Ничего не нашли -> статус не меняем.
+    * Ничего не нашли -> unrecognized («Не распознано»): фото обработано, но модель
+      не дала результата, поэтому объект нельзя считать проверенным.
     """
     rules = CLASS_RULES if rules is None else rules
     assessed_types = assessed_object_types(rules)
@@ -162,7 +164,7 @@ def build_outcome(
     elif object_found:
         status = STATUS_OK if assessed_object_found else STATUS_CHECK
     else:
-        status = None
+        status = STATUS_UNRECOGNIZED
 
     summary = (
         f"детекций={len(detections)}, дефектов={len(defects)}, "

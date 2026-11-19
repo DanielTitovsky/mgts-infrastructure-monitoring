@@ -1,4 +1,6 @@
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
+from datetime import datetime
+
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.config import settings
@@ -26,6 +28,17 @@ class InfrastructureObject(Base):
     external_id: Mapped[str | None] = mapped_column(String(100))
     lat: Mapped[float | None] = mapped_column(Float)
     lon: Mapped[float | None] = mapped_column(Float)
+
+    # Очередь обработки ИИ. Заполняется API при загрузке фото и воркером.
+    processing_status: Mapped[str | None] = mapped_column(String(32))
+    processing_started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    processing_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    processing_error: Mapped[str | None] = mapped_column(Text)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Публичный URL аннотированного фото: /uploads/processed/<file>.jpg
+    processed_img_url: Mapped[str | None] = mapped_column(Text)
 
     @property
     def img_url(self) -> str | None:

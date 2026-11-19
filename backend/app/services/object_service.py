@@ -5,12 +5,14 @@ from __future__ import annotations
 from uuid import uuid4
 
 from fastapi import UploadFile
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import storage
 from app.core.config import settings
 from app.core.errors import AppError
+from app.core.processing import STATUS_AWAITING, remove_processed_image
+from app.models.defect import Defect
 from app.models.infrastructure_object import PHOTO_KEY_PREFIX, InfrastructureObject
 from app.models.status import Status
 from app.schemas.infrastructure_object import (
@@ -64,12 +66,6 @@ async def update_object(
     if "status_id" in changes:
         await _ensure_status_exists(session, changes["status_id"])
 
-    # Новое фото — значит его нужно обработать заново.
-    if "img_url" in changes and changes["img_url"] != obj.img_url:
-        obj.processing_status = "pending"
-        obj.processing_attempts = 0
-        obj.processing_error = None
-
     for field, value in changes.items():
         setattr(obj, field, value)
 
@@ -81,11 +77,16 @@ async def update_object(
 async def delete_object(session: AsyncSession, object_id: int) -> None:
     obj = await get_object(session, object_id)
     photo_key = obj.img_key
+    processed_url = obj.processed_img_url
+    await session.execute(
+        delete(Defect).where(Defect.object_id == object_id, Defect.source == "cv")
+    )
     await session.delete(obj)
     await session.commit()
 
     if _is_managed_photo(photo_key):
         await storage.delete_object(photo_key)
+    remove_processed_image(processed_url, settings.uploads_path)
 
 
 async def set_object_photo(
@@ -109,7 +110,17 @@ async def set_object_photo(
     await storage.put_object(key, data, content_type)
 
     old_key = obj.img_key
+    old_processed_url = obj.processed_img_url
+
     obj.img_key = key
+    # Новый файл попадает в очередь ИИ. Старые результаты больше не актуальны.
+    obj.processing_status = STATUS_AWAITING
+    obj.processing_started_at = None
+    obj.processing_attempts = 0
+    obj.processing_error = None
+    obj.processed_at = None
+    obj.processed_img_url = None
+
     try:
         await session.commit()
     except Exception:
@@ -121,6 +132,7 @@ async def set_object_photo(
 
     if _is_managed_photo(old_key) and old_key != key:
         await storage.delete_object(old_key)
+    remove_processed_image(old_processed_url, settings.uploads_path)
 
     return obj
 
@@ -142,15 +154,27 @@ async def remove_object_photo(
 ) -> InfrastructureObject:
     obj = await get_object(session, object_id)
     key = obj.img_key
-    if key is None:
-        return obj
+    processed_url = obj.processed_img_url
 
-    obj.img_key = None
+    # Результаты обработки больше не соответствуют объекту даже если фото уже не было.
+    await session.execute(
+        delete(Defect).where(Defect.object_id == object_id, Defect.source == "cv")
+    )
+    obj.processing_status = None
+    obj.processing_started_at = None
+    obj.processing_attempts = 0
+    obj.processing_error = None
+    obj.processed_at = None
+    obj.processed_img_url = None
+
+    if key is not None:
+        obj.img_key = None
     await session.commit()
     await session.refresh(obj)
 
     if _is_managed_photo(key):
         await storage.delete_object(key)
+    remove_processed_image(processed_url, settings.uploads_path)
 
     return obj
 

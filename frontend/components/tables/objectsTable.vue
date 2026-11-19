@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import {useRequest} from "~/services/useRequest";
 
+const STATUS_LABELS: Record<string, string> = {
+  ok: 'В норме',
+  check_required: 'Требуется проверка',
+  repair_required: 'Требуется ремонт',
+  unrecognized: 'Не распознано'
+}
+
 const PROCESSING_LABELS: Record<string, string> = {
+  awaiting_processing: 'Ожидает обработки',
+  awating_processing: 'Ожидает обработки',
   pending: 'Ожидает обработки',
   processing: 'Обрабатывается',
   done: 'Обработано',
@@ -32,7 +41,7 @@ const hasProcessing = computed(() =>
 
 function statusLabel(item: Record<string, any>) {
   const status = statusesById.value[String(item?.status_id)]
-  return status?.type || item?.status_id || '-'
+  return STATUS_LABELS[status?.type] || status?.type || item?.status_id || '-'
 }
 
 function statusDescription(item: Record<string, any>) {

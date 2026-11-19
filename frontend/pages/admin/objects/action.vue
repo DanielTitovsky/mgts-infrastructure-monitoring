@@ -13,6 +13,8 @@ const ALLOWED_PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const ALLOWED_PHOTO_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp']
 
 const PROCESSING_LABELS: Record<string, string> = {
+  awaiting_processing: 'Ожидает обработки',
+  awating_processing: 'Ожидает обработки',
   pending: 'Ожидает обработки',
   processing: 'Обрабатывается',
   done: 'Обработано',

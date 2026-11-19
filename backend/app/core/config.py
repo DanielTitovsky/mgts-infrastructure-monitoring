@@ -57,6 +57,17 @@ class Settings(BaseSettings):
     uploads_dir: str = ""
     max_upload_mb: int = 10
 
+    # --- CV / воркер обработки фото ---
+    # Веса YOLO из папки cv в корне проекта. Переопределяется через WEIGHTS_PATH.
+    weights_path: str = ""
+    cv_min_confidence: float = 0.40
+    cv_high_confidence: float = 0.75
+    cv_iou: float = 0.5
+    cv_imgsz: int = 640
+    worker_poll_interval: float = 3.0
+    worker_max_attempts: int = 3
+    worker_stale_minutes: int = 5
+
     # --- CORS ---
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
@@ -83,6 +94,13 @@ class Settings(BaseSettings):
     @property
     def uploads_path(self) -> Path:
         return Path(self.uploads_dir) if self.uploads_dir else PROJECT_ROOT / "uploads"
+
+    @property
+    def weights_file(self) -> Path:
+        """Файл весов YOLO. По умолчанию — основная модель из папки cv."""
+        if self.weights_path:
+            return Path(self.weights_path)
+        return PROJECT_ROOT / "cv" / "ml" / "yolo-v" / "2-version.pt"
 
 
 @lru_cache
