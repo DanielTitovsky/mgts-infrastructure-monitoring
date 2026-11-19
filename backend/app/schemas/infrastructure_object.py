@@ -12,9 +12,8 @@ class InfrastructureObjectBase(BaseModel):
     lat: float | None = Field(default=None, ge=-90, le=90)
     lon: float | None = Field(default=None, ge=-180, le=180)
     status_id: int | None = None
-    img_url: str | None = None
 
-    @field_validator("type", "external_id", "place", "img_url", "lat", "lon", "status_id", mode="before")
+    @field_validator("type", "external_id", "place", "lat", "lon", "status_id", mode="before")
     @classmethod
     def _normalize_empty(cls, value: object) -> object:
         # Поля формы приходят строками, пустое значение означает null.
@@ -34,9 +33,8 @@ class InfrastructureObjectUpdate(BaseModel):
     lat: float | None = Field(default=None, ge=-90, le=90)
     lon: float | None = Field(default=None, ge=-180, le=180)
     status_id: int | None = None
-    img_url: str | None = None
 
-    @field_validator("type", "external_id", "place", "img_url", "lat", "lon", "status_id", mode="before")
+    @field_validator("type", "external_id", "place", "lat", "lon", "status_id", mode="before")
     @classmethod
     def _normalize_empty(cls, value: object) -> object:
         return blank_to_none(value)

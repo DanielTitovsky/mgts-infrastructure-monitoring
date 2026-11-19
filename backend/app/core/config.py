@@ -42,6 +42,16 @@ class Settings(BaseSettings):
     # Пока фронтенд не перешёл на реальный вход, защиту можно не включать.
     auth_required: bool = False
 
+    # --- Файловое хранилище (MinIO / любой S3-совместимый сервис) ---
+    # Внутри docker-сети эндпоинт — http://minio:9000, локально — http://localhost:9000.
+    s3_endpoint: str = "http://localhost:9000"
+    s3_access_key: str = "minioadmin"
+    s3_secret_key: str = "minioadmin"
+    s3_bucket: str = "mgts-objects"
+    s3_region: str = "us-east-1"
+    # Максимальный размер загружаемого фото объекта.
+    max_photo_size_mb: int = 5
+
     # --- CORS ---
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
@@ -60,6 +70,10 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def max_photo_size_bytes(self) -> int:
+        return self.max_photo_size_mb * 1024 * 1024
 
 
 @lru_cache
