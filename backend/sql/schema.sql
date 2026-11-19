@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS defects (
     updated_at          TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Догоняем колонки, добавленные в модель после первого создания таблицы:
+-- bbox — рамка дефекта в долях изображения, source — откуда дефект ('cv' или 'manual').
+ALTER TABLE defects
+    ADD COLUMN IF NOT EXISTS bbox JSONB,
+    ADD COLUMN IF NOT EXISTS source VARCHAR(20) NOT NULL DEFAULT 'manual';
+
 CREATE INDEX IF NOT EXISTS defects_object_id_idx
     ON defects (object_id);
 

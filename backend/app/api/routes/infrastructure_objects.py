@@ -75,7 +75,7 @@ async def get_object_photo(object_id: int, session: SessionDep):
     return Response(
         content=data,
         media_type=media_type,
-        headers={"Cache-Control": "public, max-age=60"},
+        headers={"Cache-Control": "no-cache"},
     )
 
 

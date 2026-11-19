@@ -53,7 +53,9 @@ class InfrastructureObjectRead(BaseModel):
     lon: float | None
     status_id: int | None
     img_url: str | None
-    processed_img_url: str | None
-    processing_status: str
-    processing_error: str | None
-    processed_at: datetime | None
+    # Поля воркера/ИИ. Необязательные: на ветке с фото объектов эти колонки
+    # ещё не появились в БД, и старые ответы API их не содержат.
+    processed_img_url: str | None = None
+    processing_status: str | None = None
+    processing_error: str | None = None
+    processed_at: datetime | None = None

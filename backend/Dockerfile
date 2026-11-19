@@ -14,6 +14,7 @@ COPY sql ./sql
 COPY main.py seed.py ./
 
 RUN useradd --create-home --uid 1000 appuser \
+    && mkdir -p /app/uploads \
     && chown -R appuser:appuser /app
 USER appuser
 

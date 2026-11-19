@@ -50,6 +50,9 @@ services:
       AUTH_REQUIRED: ${AUTH_REQUIRED:-false}
       # MinIO также доступен по имени сервиса внутри docker-сети.
       S3_ENDPOINT: http://minio:9000
+      # Каталог для /api/upload и результатов обработки.
+      # PROJECT_ROOT в контейнере равен "/", поэтому путь задаётся явно.
+      UPLOADS_DIR: /app/uploads
     ports:
       - "${BACKEND_PORT:-8000}:8000"
     depends_on:
