@@ -1,7 +1,6 @@
-# mgts-infrastructure-monitoring
+# Мониторинг инфраструктуры управления
 
-Система мониторинга городской инфраструктуры МГТС: Nuxt-фронтенд, FastAPI-бэкенд
-и PostgreSQL. Всё поднимается одной командой через Docker Compose.
+Система городских работников МГТС: **Nuxt**-фронтенд, **FastAPI**-бэкенд, **PostgreSQL**, объектное хранилище **S3/MinIO** и фоновый воркер для обработки фотографий через ИИ. Всё поднимается одной командой через Docker Compose.
 
 ## Быстрый старт
 
@@ -10,50 +9,79 @@
 bash start-db.sh
 ```
 
-Скрипт соберёт и запустит `db`, `minio`, `backend` и `frontend`, дождётся готовности,
-применит схему и (для пустой базы) добавит демо-данные.
+Скрипт соберёт и запустит `db`, `minio`, `backend` и `frontend`, дождётся готовности сервисов, применит схему и (для пустой базы) добавит демо-данные.
 
 | Сервис | Адрес |
 | --- | --- |
-| Frontend | <http://localhost:3000> |
-| Swagger | <http://localhost:8000/docs> |
-| Healthcheck | <http://localhost:8000/health> |
-| PostgreSQL | `localhost:5432` |
-| MinIO API | <http://localhost:9000> |
-| MinIO Console | <http://localhost:9001> |
+| Фронтенд | http://localhost:3000/ |
+| Swagger | http://localhost:8000/docs |
+| Проверка работоспособности | http://localhost:8000/health |
+| PostgreSQL | localhost:5432 |
+| API MinIO | http://localhost:9000/ |
+| Консоль MinIO | http://localhost:9001/ |
 
 Демо-вход: `admin` / `admin123`.
 
-### Реальные данные вместо моков
-
-По умолчанию во фронтенде включены моки (`frontend/config.ts`, `useMocks: true`).
-Чтобы таблицы читали API, поставьте `useMocks: false` и пересоберите фронтенд:
-
-```bash
-docker compose up -d --build frontend
-```
-
-Запросы `/api/*` проксируются Nuxt-сервером на `http://backend:8000/api`
-(переменная `API_PROXY_TARGET` в `docker-compose.yml`).
-
-### Полезные команды
-
-```bash
-bash start-db.sh --db-only     # только PostgreSQL
-docker compose logs -f         # логи всех сервисов
-docker compose down            # остановить
-docker compose down -v         # остановить и удалить данные БД
-```
-
-Порты можно переопределить в `.env` (`BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT`).
-
-> Перед запуском Docker закройте локальные dev-серверы на тех же портах,
-> иначе контейнеры не смогут занять `3000`/`8000`.
-
 ## Локальный запуск без Docker
 
-- Frontend: `cd frontend && npm install && npm run dev`
-- Backend: `cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload --port 3001`
-- БД: `bash start-db.sh --db-only`
+* **Фронтенд:** `cd frontend && npm install && npm run dev`
+* **Бэкенд:** `cd backend && pip install -r requirements.txt && uvicorn app.main:app --reload --port 3001`
+* **БД:** `bash start-db.sh --db-only`
 
-Подробности по API — в [backend/README.md](backend/README.md).
+Для тестирования загрузки и ИИ-обработки фото можно использовать примеры из папки `test_img/`.
+
+## Полезные команды
+
+```bash
+bash start-db.sh --db-only   # только PostgreSQL
+docker compose logs -f       # логи всех сервисов
+docker compose down          # остановить
+docker compose down -v       # остановить и удалить данные БД
+```
+
+Порты можно переопределить в `.env` (`BACKEND_PORT`, `FRONTEND_PORT`, `DB_PORT`). Перед запуском Docker закройте локальные dev-серверы на тех же портах, иначе контейнеры не смогут занять `3000` / `8000`.
+
+
+
+## Как это работает
+
+1. **Клиентская часть (Nuxt)**
+   - Отвечает за пользовательский интерфейс, таблицы/данные и загрузку фото.
+   - По умолчанию работает на моках (`frontend/config.ts`, `useMocks: true`).
+   - При переключении на реальный API отправляет запросы на `/api/*`, которые Nuxt-сервер проксирует на бэкенд (`http://backend:8000/api` через переменную `API_PROXY_TARGET` в `docker-compose.yml`).
+
+2. **Серверная часть (FastAPI)**
+   - Обрабатывает REST API запросы, бизнес-логику, приём/отдачу данных и валидацию.
+   - Предоставляет документацию Swagger (`http://localhost:8000/docs`) и проверку здоровья (`http://localhost:8000/health`).
+
+3. **Воркер и обработка фото через ИИ**
+   - Получает ответ / данные с фотографией (файл или ссылку из хранилища/запроса) и запускает фоновую обработку.
+   - Передаёт фото на анализ в ИИ-модуль.
+   - Забирает результат от ИИ, проверяет/нормализует данные и передаёт дальше: сохраняет файлы/артефакты в S3/MinIO и обновляет статусы и результаты в PostgreSQL.
+
+4. **База данных (PostgreSQL)**
+   - Хранит реляционные данные, сущности сотрудников/объектов, статусы задач и результаты ИИ-обработки.
+   - При запуске через `start-db.sh` дожидается готовности БД, применяет схему и для пустой базы добавляет демо-данные.
+
+5. **Хранилище файлов (S3 / MinIO)**
+   - Хранит фотографии, вложения и результаты обработки; при старте автоматически создаёт нужные корзины (buckets).
+
+## Структура проекта
+
+```text
+mgts-infrastructure-monitoring/
+├── backend/                  # FastAPI-бэкенд, логика воркера и интеграция с ИИ / MinIO
+│   ├── app/                  # Код приложения (роутеры, модели, схемы, воркер/сервисы, MinIO)
+│   ├── requirements.txt      # Зависимости Python
+│   └── README.md             # Документация по API и бэкенду
+├── frontend/                 # Фронтенд-приложение на Nuxt
+│   ├── config.ts             # Настройки фронтенда (включая переключатель useMocks)
+│   └── package.json          # Зависимости и скрипты фронтенда
+├── test_img/                 # Тестовые изображения для проверки работы приложения и ИИ
+├── docker-compose.yml        # Описание сервисов db, minio, backend, воркер (при наличии) и frontend
+├── start-db.sh               # Скрипт запуска, ожидания БД, схемы и сидирования
+├── .env                      # Переменные окружения (порты, параметры БД, ИИ и сервисов)
+└── README.md                 # Основная документация проекта
+```
+
+Подробности по API — в [backend/README.md](https://github.com).
