@@ -14,6 +14,7 @@ from app.core.config import PROJECT_ROOT
 from app import __version__
 from app.api.router import api_router
 from app.api.routes import health
+from app.core import storage
 from app.core.config import settings
 from app.core.errors import register_exception_handlers
 from app.db.bootstrap import bootstrap_schema
@@ -30,6 +31,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(_: FastAPI):
     if settings.db_bootstrap:
         await bootstrap_schema()
+    await storage.ensure_bucket()
     logger.info("API готово: http://127.0.0.1:3001%s", settings.api_prefix)
     yield
     await dispose_engine()

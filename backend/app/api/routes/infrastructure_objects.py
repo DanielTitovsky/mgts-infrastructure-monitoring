@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, File, UploadFile, status
+from fastapi.responses import Response
 
 from app.api.deps import SessionDep, require_auth
 from app.core.responses import ok
@@ -49,3 +50,39 @@ async def update_object(
 async def delete_object(object_id: int, session: SessionDep):
     await object_service.delete_object(session, object_id)
     return ok(True)
+
+
+@router.post(
+    "/{object_id}/photo",
+    response_model=Envelope[InfrastructureObjectRead],
+    summary="Загрузить или заменить фото объекта",
+)
+async def upload_object_photo(
+    object_id: int,
+    session: SessionDep,
+    file: UploadFile = File(..., description="JPEG, PNG или WebP, не больше 5 МБ"),
+):
+    return ok(await object_service.set_object_photo(session, object_id, file))
+
+
+@router.get(
+    "/{object_id}/photo",
+    summary="Получить фото объекта",
+    responses={200: {"content": {"image/jpeg": {}, "image/png": {}, "image/webp": {}}}},
+)
+async def get_object_photo(object_id: int, session: SessionDep):
+    data, media_type = await object_service.get_object_photo(session, object_id)
+    return Response(
+        content=data,
+        media_type=media_type,
+        headers={"Cache-Control": "public, max-age=60"},
+    )
+
+
+@router.delete(
+    "/{object_id}/photo",
+    response_model=Envelope[InfrastructureObjectRead],
+    summary="Удалить фото объекта",
+)
+async def delete_object_photo(object_id: int, session: SessionDep):
+    return ok(await object_service.remove_object_photo(session, object_id))
