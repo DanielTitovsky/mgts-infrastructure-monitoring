@@ -1,5 +1,20 @@
 # Nuxt Minimal Starter
 
+## Интеграция с бэкендом
+
+- `config.ts` → `useMocks: false`: все экраны работают с реальным FastAPI.
+  Для работы без API верните `true` — включится `services/mockApi.ts`.
+- Клиентские запросы идут по относительным путям `/api/*` через прокси Nuxt:
+  в dev это `nitro.devProxy`, в production — `nitro.routeRules`.
+  Адрес backend задаётся переменной `API_PROXY_TARGET`
+  (по умолчанию `http://127.0.0.1:3001/api`, в Docker — `http://backend:8000/api`).
+- SSR-запросы идут в backend напрямую по `runtimeConfig.apiTarget`
+  (тот же `API_PROXY_TARGET`), поэтому страницы приходят уже с данными.
+- Фото объекта: `POST /api/infrastructure-objects/{id}/photo` (`multipart`,
+  поле `file`), просмотр — `GET .../photo`, удаление — `DELETE .../photo`.
+  В форме объекта доступны выбор файла, превью и удаление фото,
+  в таблице — миниатюра.
+
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
 ## Setup

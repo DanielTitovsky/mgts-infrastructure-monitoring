@@ -1,7 +1,7 @@
 interface MockOptions {
   method?: string,
   headers?: {},
-  body?: {} | string,
+  body?: Record<string, any> | string | FormData,
   removePreferHeader?: boolean
 }
 
@@ -177,6 +177,16 @@ const collections: Record<string, MockRecord[]> = {
   '/api/defects': findings
 }
 
+// Заглушка картинки для мок-режима, чтобы превью и миниатюры были видны.
+const mockPhoto = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="240" viewBox="0 0 320 240">' +
+  '<rect width="320" height="240" fill="#EEF2F7"/>' +
+  '<path d="M110 95h25l10-14h30l10 14h25v60h-100z" fill="#B8C7D9"/>' +
+  '<circle cx="160" cy="125" r="19" fill="#EEF2F7"/>' +
+  '<text x="160" y="190" font-family="Arial, sans-serif" font-size="14" fill="#7A8CA3" text-anchor="middle">Фото (мок)</text>' +
+  '</svg>'
+)
+
 function ok(data: any) {
   return {
     success: true,
@@ -206,6 +216,10 @@ function parseBody(body: any): MockRecord {
     catch (e) {
       return {}
     }
+  }
+  // FormData в моках не разбираем — она нужна только для эндпоинта фото.
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    return {}
   }
   return body || {}
 }
@@ -252,6 +266,30 @@ export async function mockRequest(url: string, options: MockOptions = {}) {
 
   if (!rows) {
     return fail('Мок-эндпоинт не найден', `Для ${path} не описан мок.`)
+  }
+
+  // Фото объекта: POST/DELETE /api/infrastructure-objects/{id}/photo
+  if (collectionPath === '/api/infrastructure-objects' && rowId && segments[3] === 'photo') {
+    const row = rows.find(item => String(item.id) === String(rowId))
+
+    if (!row) {
+      return fail('Объект не найден')
+    }
+
+    if (method === 'POST') {
+      row.img_url = mockPhoto
+      row.processed_img_url = mockPhoto
+      row.processing_status = 'pending'
+      return ok({ ...row })
+    }
+
+    if (method === 'DELETE') {
+      row.img_url = null
+      row.processed_img_url = null
+      return ok({ ...row })
+    }
+
+    return fail('Метод не поддерживается', `${method} ${path}`)
   }
 
   if (method === 'GET' && !rowId) {

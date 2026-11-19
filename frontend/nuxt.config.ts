@@ -5,10 +5,20 @@
 // Nitro отрезает совпавший префикс (/api/) перед пересылкой,
 // поэтому в target должен остаться /api.
 const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3001/api'
+// Корень backend: оттуда отдаётся статика /uploads (результаты обработки ИИ).
+const backendOrigin = apiProxyTarget.replace(/\/api\/?$/, '')
+const isProduction = process.env.NODE_ENV === 'production'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: false },
+
+    runtimeConfig: {
+        // Только для SSR: прямой адрес backend API, чтобы $fetch с относительным
+        // путём не уходил в Nitro-роутер (там /api/* нет).
+        // На клиенте запросы идут по относительным путям через прокси.
+        apiTarget: apiProxyTarget,
+    },
 
     nitro: {
         prerender: {
@@ -16,9 +26,25 @@ export default defineNuxtConfig({
                 '/api/',
             ],
         },
+        // Production-сборка (nuxt build) тоже проксирует /api/* на backend.
+        // В dev-режиме используется devProxy ниже.
+        routeRules: isProduction
+            ? {
+                '/api/**': {
+                    proxy: `${apiProxyTarget}/**`,
+                },
+                '/uploads/**': {
+                    proxy: `${backendOrigin}/uploads/**`,
+                },
+            }
+            : {},
         devProxy: {
             "/api/" : {
                 target:  apiProxyTarget,
+                changeOrigin: true,
+            },
+            "/uploads/" : {
+                target:  `${backendOrigin}/uploads`,
                 changeOrigin: true,
             }
         }

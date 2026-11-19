@@ -1,11 +1,12 @@
-import { $fetch } from 'ofetch'
 import config from '~/config'
 import { mockRequest } from '~/services/mockApi'
 
+type RequestBody = Record<string, unknown> | string | FormData
+
 interface Options{
   method?: string,
-  headers?: {},
-  body?: {} | string,
+  headers?: Record<string, string>,
+  body?: RequestBody,
   removePreferHeader?: boolean
 }
 
@@ -14,13 +15,26 @@ export function useRequest(url: string, options: Options = {}) {
     return mockRequest(url, options)
   }
 
+  // На сервере относительный URL некуда резолвить: Nitro не проксирует
+  // внутренние вызовы $fetch. Идём в backend напрямую.
+  let requestUrl = url
+
+  if (import.meta.server) {
+    const runtimeConfig = useRuntimeConfig()
+    const apiTarget = String(runtimeConfig.apiTarget || '').replace(/\/+$/, '')
+
+    if (apiTarget) {
+      requestUrl = `${apiTarget}${url.replace(/^\/api/, '')}`
+    }
+  }
+
   const $token =  useCookie('token')
   const token = $token.value
 
   const result = {
     success: true,
-    data: undefined,
-    error: undefined,
+    data: undefined as any,
+    error: undefined as any,
   }
 
   const headers: Record<string, string> = {
@@ -31,16 +45,33 @@ export function useRequest(url: string, options: Options = {}) {
     delete headers.Prefer
   }
 
-  if (typeof options.body !== "string") {
-    options.body = JSON.stringify(options.body)
+  // FormData нельзя сериализовать в JSON: браузер сам выставит
+  // multipart/form-data и boundary. Обычные объекты отправляем как JSON.
+  const isFormData =
+    typeof FormData !== 'undefined' && options.body instanceof FormData
+
+  const body = isFormData || typeof options.body === 'string'
+    ? options.body
+    : options.body
+      ? JSON.stringify(options.body)
+      : options.body
+
+  // Для FormData Content-Type выставляет браузер (нужен boundary).
+  const hasContentType = !!Object.keys(headers).find(
+    (name) => name.toLowerCase() === 'content-type'
+  )
+
+  if (body && !isFormData && !hasContentType) {
+    headers['Content-Type'] = 'application/json'
   }
 
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
 
-  return $fetch(url, {
+  return $fetch(requestUrl, {
     ...options,
+    body,
     retry: 0, // https://github.com/nuxt/nuxt/issues/23457
     method: options?.method || 'GET',
     headers,
@@ -59,7 +90,7 @@ export function useRequest(url: string, options: Options = {}) {
     })
     .catch((error: any) => {
       let parsed = error.data
-      console.log(error.data)
+      console.error('[useRequest]', options?.method || 'GET', url, error?.message || error)
       try {
         parsed = JSON.parse(error.data)
       }
