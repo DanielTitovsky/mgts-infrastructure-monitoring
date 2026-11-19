@@ -52,6 +52,11 @@ class Settings(BaseSettings):
     # Максимальный размер загружаемого фото объекта.
     max_photo_size_mb: int = 5
 
+    # --- Загрузка файлов (POST /api/upload, локальный диск) ---
+    # Пусто = <корень проекта>/uploads. В Docker задаётся через UPLOADS_DIR.
+    uploads_dir: str = ""
+    max_upload_mb: int = 10
+
     # --- CORS ---
     cors_origins: str = (
         "http://localhost:3000,http://127.0.0.1:3000,"
@@ -74,6 +79,10 @@ class Settings(BaseSettings):
     @property
     def max_photo_size_bytes(self) -> int:
         return self.max_photo_size_mb * 1024 * 1024
+
+    @property
+    def uploads_path(self) -> Path:
+        return Path(self.uploads_dir) if self.uploads_dir else PROJECT_ROOT / "uploads"
 
 
 @lru_cache

@@ -8,9 +8,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from app.core.config import PROJECT_ROOT
-
-
 from app import __version__
 from app.api.router import api_router
 from app.api.routes import health
@@ -54,7 +51,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    uploads_dir = PROJECT_ROOT / "uploads"
+    uploads_dir = settings.uploads_path
     uploads_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
