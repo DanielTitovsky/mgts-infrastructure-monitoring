@@ -57,7 +57,6 @@ CLASS_RULES: dict[str, ClassRule] = {
     "transformer":        ClassRule(kind="object", object_type="support"),
     "splice case":        ClassRule(kind="object", object_type="support"),
     "street light":       ClassRule(kind="object", object_type="support"),
-    "odn_pole":           ClassRule(kind="object", object_type="support"),  # столб из первой версии модели
 }
 
 # Класс, которого нет в CLASS_RULES, трактуем осторожно: как дефект, требующий проверки.
