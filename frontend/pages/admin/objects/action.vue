@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {useRoute} from "#vue-router";
 import {useRequest} from "~/services/useRequest";
+import {useNotifications} from "~/composables/useNotifications";
 
 definePageMeta({
   name: 'objects-action',
@@ -20,6 +21,7 @@ const PROCESSING_LABELS: Record<string, string> = {
 
 const $router = useRouter()
 const $route = useRoute()
+const notifications = useNotifications()
 
 const id = computed(() => $route.query?.id)
 
@@ -35,6 +37,9 @@ const photoInput = ref<HTMLInputElement | null>(null)
 const photoFile = ref<File | null>(null)
 const photoPreview = ref<string | null>(null)
 const photoRemoved = ref(false)
+// Оверлей на всю страницу показываем только во время перетаскивания файла.
+const isDragging = ref(false)
+const dragDepth = ref(0)
 // Прибавляется после загрузки нового фото, чтобы <img> не показал старую версию из кэша.
 const photoVersion = ref(0)
 
@@ -68,13 +73,9 @@ function releasePreview() {
   }
 }
 
-function onPhotoSelected(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0] || null
-
+// Общая проверка файла — используется и для выбора через диалог, и для drag-and-drop.
+function acceptPhotoFile(file: File) {
   formError.value = ''
-
-  if (!file) return
 
   const extension = file.name.split('.').pop()?.toLowerCase() || ''
   const isAllowedType = ALLOWED_PHOTO_TYPES.includes(file.type)
@@ -82,13 +83,15 @@ function onPhotoSelected(event: Event) {
 
   if (!isAllowedType) {
     formError.value = 'Допустимы только изображения JPEG, PNG и WebP.'
-    input.value = ''
+    notifications.error(formError.value, 'Неподдерживаемый файл')
+    if (photoInput.value) photoInput.value.value = ''
     return
   }
 
   if (file.size > MAX_PHOTO_SIZE) {
     formError.value = 'Максимальный размер фото — 5 МБ.'
-    input.value = ''
+    notifications.error(formError.value, 'Слишком большой файл')
+    if (photoInput.value) photoInput.value.value = ''
     return
   }
 
@@ -96,6 +99,60 @@ function onPhotoSelected(event: Event) {
   photoFile.value = file
   photoPreview.value = URL.createObjectURL(file)
   photoRemoved.value = false
+}
+
+function onPhotoSelected(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0] || null
+
+  if (!file) return
+
+  acceptPhotoFile(file)
+}
+
+function openFileDialog() {
+  photoInput.value?.click()
+}
+
+function hasDraggedFiles(event: DragEvent) {
+  return !!event.dataTransfer?.types.includes('Files')
+}
+
+// Слушатели висят на window: файл можно бросить в любое место страницы.
+// Счётчик нужен, чтобы оверлей не мигал при переходе между элементами.
+function onWindowDragEnter(event: DragEvent) {
+  if (!hasDraggedFiles(event)) return
+
+  event.preventDefault()
+  dragDepth.value += 1
+  isDragging.value = true
+}
+
+function onWindowDragOver(event: DragEvent) {
+  if (!hasDraggedFiles(event)) return
+
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
+  isDragging.value = true
+}
+
+function onWindowDragLeave(event: DragEvent) {
+  if (!isDragging.value) return
+
+  dragDepth.value = Math.max(0, dragDepth.value - 1)
+  if (dragDepth.value === 0 || !event.relatedTarget) {
+    dragDepth.value = 0
+    isDragging.value = false
+  }
+}
+
+function onWindowDrop(event: DragEvent) {
+  event.preventDefault()
+  dragDepth.value = 0
+  isDragging.value = false
+
+  const file = event.dataTransfer?.files?.[0]
+  if (file) acceptPhotoFile(file)
 }
 
 function markPhotoForRemoval() {
@@ -160,6 +217,8 @@ async function uploadPhoto(objectId: string | number) {
   return useRequest(`/api/infrastructure-objects/${objectId}/photo`, {
     method: 'POST',
     body: formData,
+    successMessage: 'Фото загружено',
+    errorTitle: 'Не удалось загрузить фото',
   })
 }
 
@@ -171,15 +230,24 @@ async function sendData() {
 
   try {
     const payload = buildPayload()
+    // Если вместе с объектом сохраняется фото, итоговый тост покажет
+    // результат загрузки/удаления фото, чтобы не было двух «успехов» подряд.
+    const saveSuccessMessage = (photoFile.value || photoRemoved.value)
+      ? false
+      : (isUpdateMode.value ? 'Объект сохранён' : 'Объект создан')
 
     const result = isUpdateMode.value
       ? await useRequest(`/api/infrastructure-objects/${id.value}`, {
         method: 'PUT',
-        body: payload
+        body: payload,
+        successMessage: saveSuccessMessage,
+        errorTitle: 'Не удалось сохранить объект',
       })
       : await useRequest(`/api/infrastructure-objects`, {
         method: 'POST',
-        body: payload
+        body: payload,
+        successMessage: saveSuccessMessage,
+        errorTitle: 'Не удалось создать объект',
       })
 
     if (!!result.error) {
@@ -219,6 +287,8 @@ async function sendData() {
     } else if (photoRemoved.value && hasSavedPhoto.value) {
       const removeResult = await useRequest(`/api/infrastructure-objects/${savedId}/photo`, {
         method: 'DELETE',
+        successMessage: 'Фото удалено',
+        errorTitle: 'Не удалось удалить фото',
       })
 
       if (!!removeResult.error) {
@@ -245,10 +315,20 @@ onMounted(() => {
   if (isUpdateMode.value) {
     getData()
   }
+
+  window.addEventListener('dragenter', onWindowDragEnter)
+  window.addEventListener('dragover', onWindowDragOver)
+  window.addEventListener('dragleave', onWindowDragLeave)
+  window.addEventListener('drop', onWindowDrop)
 })
 
 onBeforeUnmount(() => {
   releasePreview()
+
+  window.removeEventListener('dragenter', onWindowDragEnter)
+  window.removeEventListener('dragover', onWindowDragOver)
+  window.removeEventListener('dragleave', onWindowDragLeave)
+  window.removeEventListener('drop', onWindowDrop)
 })
 </script>
 
@@ -278,44 +358,49 @@ onBeforeUnmount(() => {
       <h2 class="action-table__photo-title">Фото объекта</h2>
       <p class="action-table__hint">
         JPEG, PNG или WebP, не больше 5 МБ. Одно фото на объект — новое заменит предыдущее.
+        Файл можно перетащить в любое место страницы.
       </p>
 
-      <div v-if="previewUrl" class="action-table__photo-preview">
-        <img :src="previewUrl" alt="Фото объекта"/>
+      <div v-if="previewUrl" class="action-table__photo-content">
+        <img class="action-table__photo-image" :src="previewUrl" alt="Фото объекта"/>
+        <div class="action-table__photo-actions">
+          <button type="button" class="action-table__photo-button" @click="openFileDialog">
+            Выбрать другое фото
+          </button>
+          <button
+            v-if="!photoRemoved"
+            type="button"
+            class="action-table__photo-button"
+            @click="markPhotoForRemoval"
+          >
+            Удалить фото
+          </button>
+          <button
+            v-else-if="hasSavedPhoto"
+            type="button"
+            class="action-table__photo-button"
+            @click="cancelPhotoRemoval"
+          >
+            Отменить удаление
+          </button>
+        </div>
       </div>
-      <p v-else class="action-table__photo-empty">Фото не загружено</p>
 
-      <div class="action-table__photo-actions">
-        <label class="action-table__input-file-label" for="object-photo">
-          {{ previewUrl ? 'Выбрать другое фото' : 'Прикрепить фото' }}
-        </label>
-        <input
-          id="object-photo"
-          ref="photoInput"
-          class="action-table__input-file"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          @change="onPhotoSelected"
-        />
-
-        <button
-          v-if="previewUrl && !photoRemoved"
-          type="button"
-          class="action-table__remove-button"
-          @click="markPhotoForRemoval"
-        >
-          Удалить фото
-        </button>
-
-        <button
-          v-else-if="photoRemoved && hasSavedPhoto"
-          type="button"
-          class="action-table__remove-button"
-          @click="cancelPhotoRemoval"
-        >
-          Отменить удаление
+      <div v-else class="action-table__photo-actions">
+        <span class="action-table__photo-empty">Фото не загружено</span>
+        <button type="button" class="action-table__photo-button" @click="openFileDialog">
+          Прикрепить фото
         </button>
       </div>
+
+      <input
+        id="object-photo"
+        ref="photoInput"
+        class="action-table__input-file"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        @change="onPhotoSelected"
+      />
 
       <p v-if="photoFile" class="action-table__hint">Выбрано: {{ photoFile.name }}</p>
       <p v-if="photoRemoved && hasSavedPhoto" class="action-table__hint">
@@ -343,6 +428,13 @@ onBeforeUnmount(() => {
       {{ saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить' : 'Добавить') }}
     </button>
   </form>
+
+  <Teleport to="body">
+    <div v-if="isDragging" class="photo-drop-overlay">
+      <span class="photo-drop-overlay__plus">+</span>
+      <span class="photo-drop-overlay__text">Отпустите файл, чтобы прикрепить фото</span>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped lang="scss">
@@ -361,7 +453,7 @@ onBeforeUnmount(() => {
     margin: 0 0 6px;
   }
 
-  &__photo-preview,
+  &__photo-content,
   &__photo-processed {
     img {
       display: block;
@@ -375,6 +467,44 @@ onBeforeUnmount(() => {
     }
   }
 
+  &__photo-content {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 320px;
+  }
+
+  &__photo-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  // Единый стиль для «Выбрать другое фото», «Удалить фото» и «Прикрепить фото».
+  &__photo-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, .8);
+    border-radius: 5px;
+    background: linear-gradient(26deg, #0D47A1, #3e669a);
+    color: #FFF;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: opacity .2s ease;
+
+    &:hover {
+      opacity: .85;
+    }
+  }
+
   &__photo-processed {
     margin-top: 16px;
 
@@ -385,31 +515,9 @@ onBeforeUnmount(() => {
   }
 
   &__photo-empty {
-    color: #B0B0B0;
+    display: block;
+    color: #7A7A7A;
     font-size: 14px;
-    margin: 0 0 14px;
-  }
-
-  &__photo-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  &__remove-button {
-    border: 1px solid #D32F2F;
-    border-radius: 5px;
-    background: transparent;
-    color: #D32F2F;
-    padding: 9px 15px;
-    font-size: 14px;
-    transition: all .25s ease;
-
-    &:hover {
-      background: #D32F2F;
-      color: #FFF;
-    }
   }
 
   &__hint {
@@ -433,5 +541,32 @@ onBeforeUnmount(() => {
 .add-button:disabled {
   opacity: .6;
   cursor: default;
+}
+
+// Полупрозрачный синий оверлей появляется только во время перетаскивания файла
+// над любой точкой страницы. pointer-events: none — чтобы drop доходил до window.
+.photo-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: rgba(13, 71, 161, .55);
+  color: #FFF;
+  pointer-events: none;
+
+  &__plus {
+    font-size: 140px;
+    font-weight: 200;
+    line-height: 1;
+  }
+
+  &__text {
+    font-size: 18px;
+    font-weight: 600;
+  }
 }
 </style>

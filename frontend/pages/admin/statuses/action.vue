@@ -27,24 +27,26 @@ async function getData() {
 }
 
 async function sendData() {
-  let result = null
-  if (isUpdateMode.value) {
-    result = await useRequest(`/api/statuses/${id.value}`, {
-      method:'PUT',
-      body: fields.value
-    });
-  } else {
-    result = await useRequest(`/api/statuses`,{
-      method:'POST',
-      body: fields.value
-    });
-  }
-  if (!!result.error) {
-    console.log("Не удалось сохранить статус")
-  } else {
-    console.log("Статус сохранён")
-    await $router.push("/admin/statuses");
-  }
+  const successMessage = isUpdateMode.value ? 'Статус сохранён' : 'Статус создан'
+  const errorTitle = 'Не удалось сохранить статус'
+
+  const result = isUpdateMode.value
+    ? await useRequest(`/api/statuses/${id.value}`, {
+      method: 'PUT',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+    : await useRequest('/api/statuses', {
+      method: 'POST',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+
+  if (!!result.error) return
+
+  await $router.push("/admin/statuses");
 }
 
 onMounted(() => {

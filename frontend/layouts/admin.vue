@@ -3,7 +3,14 @@ import {useRequest} from "~/services/useRequest";
 
 const $router = useRouter();
 async function logout() {
-  const response = await useRequest('/api/logout')
+  await useRequest('/api/logout', {
+    successMessage: 'Вы вышли из системы',
+    errorTitle: 'Не удалось выйти из системы'
+  })
+
+  // Токен живёт в cookie на клиенте — удаляем его и при ошибке API,
+  // чтобы пользователь всё равно не остался в админке.
+  useCookie('token').value = null
   await $router.push('/admin')
 }
 </script>

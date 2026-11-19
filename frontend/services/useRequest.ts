@@ -1,4 +1,5 @@
 import config from '~/config'
+import { useNotifications } from '~/composables/useNotifications'
 import { mockRequest } from '~/services/mockApi'
 
 type RequestBody = Record<string, unknown> | string | FormData
@@ -7,12 +8,56 @@ interface Options{
   method?: string,
   headers?: Record<string, string>,
   body?: RequestBody,
-  removePreferHeader?: boolean
+  removePreferHeader?: boolean,
+  // Уведомления: silent отключает тосты, successMessage задаёт текст успеха
+  // (false — не показывать), errorTitle переопределяет заголовок ошибки.
+  silent?: boolean,
+  successMessage?: string | false,
+  errorTitle?: string
+}
+
+const MUTATION_METHODS = ['POST', 'PUT', 'PATCH', 'DELETE']
+
+const DEFAULT_SUCCESS_MESSAGES: Record<string, string> = {
+  POST: 'Действие выполнено',
+  PUT: 'Изменения сохранены',
+  PATCH: 'Изменения сохранены',
+  DELETE: 'Удалено',
 }
 
 export function useRequest(url: string, options: Options = {}) {
+  const notifications = useNotifications()
+  const method = (options.method || 'GET').toUpperCase()
+
+  function notifyResult(result: { success: boolean, error?: any }) {
+    if (options.silent) return
+
+    if (result.error) {
+      const description = result.error.description
+        || result.error.message
+        || 'Не удалось выполнить действие. Попробуйте ещё раз.'
+
+      notifications.error(description, options.errorTitle || result.error.title || 'Ошибка')
+      return
+    }
+
+    if (options.successMessage === false) return
+
+    if (typeof options.successMessage === 'string' && options.successMessage) {
+      notifications.success(options.successMessage)
+      return
+    }
+
+    if (MUTATION_METHODS.includes(method)) {
+      notifications.success(DEFAULT_SUCCESS_MESSAGES[method] || 'Действие выполнено')
+    }
+  }
+
   if (config.useMocks) {
-    return mockRequest(url, options)
+    return mockRequest(url, options).then((result) => {
+      notifyResult(result)
+      return result
+    })
   }
 
   // На сервере относительный URL некуда резолвить: Nitro не проксирует
@@ -86,6 +131,8 @@ export function useRequest(url: string, options: Options = {}) {
       result.error = parsed?.error
       result.data = (parsed?.data || parsed?.success)
 
+      notifyResult(result)
+
       return result
     })
     .catch((error: any) => {
@@ -97,15 +144,20 @@ export function useRequest(url: string, options: Options = {}) {
       catch (e) { }
 
       result.success = false
+      const fallbackMessage = error?.response
+        ? 'Попробуйте повторить попытку позже'
+        : 'Сервер недоступен. Проверьте подключение и повторите попытку.'
+
       result.error = {
         code: parsed?.code || parsed?.error?.code || -100,
         title: parsed?.title || parsed?.error?.title || 'Ошибка',
-        description: parsed?.description || parsed?.error?.description || 'Попробуйте повторить попытку позже',
-        message: parsed?.message || parsed?.error?.message || 'Попробуйте повторить попытку позже',
+        description: parsed?.description || parsed?.error?.description || fallbackMessage,
+        message: parsed?.message || parsed?.error?.message || fallbackMessage,
         data: parsed?.error?.data,
         error: parsed?.error,
         response: parsed || error,
       }
+      notifyResult(result)
       return result
     })
 }

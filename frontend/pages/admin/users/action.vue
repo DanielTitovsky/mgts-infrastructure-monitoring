@@ -27,24 +27,26 @@ async function getData() {
 }
 
 async function sendData() {
-  let result = null
-  if (isUpdateMode.value) {
-    result = await useRequest(`/api/users/${id.value}`, {
-      method:'PUT',
-      body: fields.value
-    });
-  } else {
-    result = await useRequest(`/api/users`,{
-      method:'POST',
-      body: fields.value
-    });
-  }
-  if (!!result.error) {
-    console.log("Не удалось сохранить пользователя")
-  } else {
-    console.log("Пользователь сохранён")
-    await $router.push("/admin/users");
-  }
+  const successMessage = isUpdateMode.value ? 'Пользователь сохранён' : 'Пользователь создан'
+  const errorTitle = 'Не удалось сохранить пользователя'
+
+  const result = isUpdateMode.value
+    ? await useRequest(`/api/users/${id.value}`, {
+      method: 'PUT',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+    : await useRequest('/api/users', {
+      method: 'POST',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+
+  if (!!result.error) return
+
+  await $router.push("/admin/users");
 }
 
 onMounted(() => {

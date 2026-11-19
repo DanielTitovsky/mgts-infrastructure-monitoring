@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import {useRequest} from "~/services/useRequest";
+import {useNotifications} from "~/composables/useNotifications";
 
 const $router = useRouter();
+const notifications = useNotifications();
 
 const login = ref()
 const password = ref()
@@ -12,11 +14,24 @@ async function OnSubmitForm() {
     body: {
       username: login.value,
       password: password.value
-    }
+    },
+    successMessage: false, // покажем после сохранения токена
+    errorTitle: 'Не удалось войти'
   })
 
+  // Об ошибке уже сообщил useRequest — просто остаёмся на форме входа.
+  if (!!request.error) return
+
+  const token = request.data?.token
+
+  if (!token) {
+    notifications.error('Сервер не вернул токен доступа.', 'Не удалось войти')
+    return
+  }
+
   const cookieToken = useCookie('token');
-  cookieToken.value = request.data.token;
+  cookieToken.value = token;
+  notifications.success('Вы вошли в систему');
 
   await $router.push("/admin/users");
 }

@@ -27,24 +27,26 @@ async function getData() {
 }
 
 async function sendData() {
-  let result = null
-  if (isUpdateMode.value) {
-    result = await useRequest(`/api/defects/${id.value}`, {
-      method:'PUT',
-      body: fields.value
-    });
-  } else {
-    result = await useRequest(`/api/defects`,{
-      method:'POST',
-      body: fields.value
-    });
-  }
-  if (!!result.error) {
-    console.log("Не удалось сохранить дефект")
-  } else {
-    console.log("Дефект сохранён")
-    await $router.push("/admin/findings");
-  }
+  const successMessage = isUpdateMode.value ? 'Дефект сохранён' : 'Дефект создан'
+  const errorTitle = 'Не удалось сохранить дефект'
+
+  const result = isUpdateMode.value
+    ? await useRequest(`/api/defects/${id.value}`, {
+      method: 'PUT',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+    : await useRequest('/api/defects', {
+      method: 'POST',
+      body: fields.value,
+      successMessage,
+      errorTitle
+    })
+
+  if (!!result.error) return
+
+  await $router.push("/admin/findings");
 }
 
 onMounted(() => {

@@ -13,6 +13,9 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
   devtools: { enabled: false },
 
+    // Всплывающие уведомления (izitoast) для успешных и ошибочных действий.
+    modules: ['nuxt-toast'],
+
     runtimeConfig: {
         // Только для SSR: прямой адрес backend API, чтобы $fetch с относительным
         // путём не уходил в Nitro-роутер (там /api/* нет).
