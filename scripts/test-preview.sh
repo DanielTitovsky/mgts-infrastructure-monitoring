@@ -6,7 +6,7 @@ if scripts/preview.sh invalid >/dev/null 2>&1; then exit 1; fi
 docker compose -p mgts-preview -f compose.preview.yml config --format json | uv run python -c '
 import json,sys
 c=json.load(sys.stdin); s=c["services"]
-assert set(s)=={"db","minio","backend","frontend"}
+assert set(s)=={"db","db-init","minio","backend","frontend"}
 assert not s["db"].get("ports") and not s["minio"].get("ports")
 assert s["frontend"]["ports"][0]["host_ip"]=="127.0.0.1"
 assert s["backend"]["environment"]["S3_ENDPOINT"]=="http://minio:9000"
