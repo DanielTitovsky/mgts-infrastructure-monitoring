@@ -1,3 +1,4 @@
+import config from './config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import Aura from '@primeuix/themes/aura'
 import { definePreset } from '@primeuix/themes'
@@ -6,7 +7,7 @@ import { definePreset } from '@primeuix/themes'
 // локально — на uvicorn по умолчанию.
 // Nitro отрезает совпавший префикс (/api/) перед пересылкой,
 // поэтому в target должен остаться /api.
-const apiProxyTarget = process.env.API_PROXY_TARGET || 'http://127.0.0.1:3001/api'
+const apiProxyTarget = process.env.API_PROXY_TARGET || config.apiUrl
 // Корень backend: оттуда отдаётся статика /uploads (результаты обработки ИИ).
 const backendOrigin = apiProxyTarget.replace(/\/api\/?$/, '')
 const isProduction = process.env.NODE_ENV === 'production'
@@ -60,7 +61,7 @@ export default defineNuxtConfig({
         apiTarget: apiProxyTarget,
         public: {
             // Demo mode is opt-in and only routes useRequest through mockApi.
-            demoMode: false,
+            demoMode: config.useMocks,
         },
     },
 

@@ -37,3 +37,13 @@ test('mock object photos can be replaced and removed without a backend', async (
   assert.equal(removal.data.img_url, null)
   assert.equal(removal.data.processed_img_url, null)
 })
+
+test('developer config supplies Nuxt defaults without removing runtime overrides', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const { default: config } = await import('../config.ts')
+  assert.equal(config.useMocks, false)
+  assert.equal(config.apiUrl, 'http://localhost:3001/api')
+  const nuxt = await readFile(new URL('../nuxt.config.ts', import.meta.url), 'utf8')
+  assert.match(nuxt, /demoMode:\s*config\.useMocks/)
+  assert.match(nuxt, /process\.env\.API_PROXY_TARGET\s*\|\|\s*config\.apiUrl/)
+})
