@@ -4,3 +4,4 @@
 - [ ] Run syntax/config checks and live health/API proxy verification.
 - [ ] Publish with the frontend Draft PR; keep ML workbench in its independent ML Draft.
 - [ ] Fix fresh database prerequisite: base tables must exist before API additive schema bootstrap; initialization must be non-destructive/idempotent.
+- [ ] Seed existing idempotent demo records after startup so the preview supports login and clicking through populated tables; verify browser DOM interactions without screenshots.
