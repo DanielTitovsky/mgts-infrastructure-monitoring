@@ -26,3 +26,12 @@ worker is deliberately not started: model provisioning and ML workbench are
 separate workflows in the ML Draft PR (`cv/data_pipeline/README.md`). Uploaded
 objects will not receive automatic inference until a worker is configured.
 No dataset download or training happens during startup.
+
+## Verified candidate preview
+
+The current server preview is forwarded to the laptop at
+http://127.0.0.1:13300/admin (dedicated `mgts-frontend-tunnel` session).
+Login API, six admin routes and five seeded objects returned successful HTTP
+responses. Browser automation crashed before interactions, so click-through
+verification remains pending. The production Nitro build is not verified;
+this preview uses the existing Nuxt development Docker entrypoint.
