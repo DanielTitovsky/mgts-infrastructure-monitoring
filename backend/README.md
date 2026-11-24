@@ -20,6 +20,9 @@ Compose поднимет PostgreSQL, MinIO, API, ИИ-воркер и фронт
 адресу `http://backend:8000` (передаётся через `API_PROXY_TARGET` в
 `docker-compose.yml`).
 
+Compose выполняет `alembic upgrade head` отдельным сервисом после готовности
+PostgreSQL и до запуска API или воркера. Демо-данные автоматически не добавляются.
+
 Воркер можно запустить/перезапустить отдельно:
 
 ```bash
@@ -32,7 +35,7 @@ docker compose logs -f worker
 ```bash
 # 1. База данных (из корня проекта, один раз)
 bash start-db.sh --db-only
-#    либо: docker compose up -d db, затем применить migrations.sql
+#    либо: docker compose up -d db, затем применить миграцию из backend (шаг 3)
 
 # 2. Зависимости бэкенда
 cd backend
@@ -40,13 +43,16 @@ py -3 -m venv .venv
 .venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Демо-данные (необязательно, но удобно для проверки UI)
+# 3. Создание/обновление схемы БД (из каталога backend)
+alembic upgrade head
+
+# 4. Демо-данные (необязательно, но удобно для проверки UI)
 python seed.py
 
-# 4. Запуск API
+# 5. Запуск API
 uvicorn app.main:app --reload --port 3001
 
-# 5. В другом терминале — ИИ-воркер (нужен ML-стек из requirements-worker.txt
+# 6. В другом терминале — ИИ-воркер (нужен ML-стек из requirements-worker.txt
 #    и веса YOLO из папки cv; WEIGHTS_PATH при необходимости переопределить)
 python worker.py
 ```
@@ -131,8 +137,7 @@ backend/
 │   │   └── responses.py        # конверт успешного ответа
 │   ├── db/
 │   │   ├── base.py             # DeclarativeBase
-│   │   ├── session.py          # async engine и get_session
-│   │   └── bootstrap.py        # применение sql/schema.sql при старте
+│   │   └── session.py          # async engine и get_session
 │   ├── models/                 # SQLAlchemy-модели таблиц
 │   ├── schemas/                # Pydantic-схемы запросов/ответов
 │   ├── services/               # бизнес-логика и запросы к БД (cv_logic.py — разбор детекций)
@@ -141,7 +146,8 @@ backend/
 │       ├── deps.py             # get_session, get_current_user, require_auth
 │       ├── router.py           # сборка /api
 │       └── routes/             # auth, users, statuses, objects, defects, health
-├── sql/schema.sql              # идемпотентное дополнение схемы
+├── alembic.ini                 # конфигурация Alembic
+├── migrations/                 # версионируемые миграции Alembic
 ├── seed.py                     # демо-данные
 ├── requirements.txt            # зависимости API
 ├── requirements-worker.txt     # API + PyTorch/Ultralytics/OpenCV для воркера
@@ -155,23 +161,25 @@ backend/
 
 ## Схема БД
 
-Базовая схема создаётся корневым `migrations.sql` (её применяет `start-db.sh`).
-`backend/sql/schema.sql` при старте **дополняет** её:
+Alembic — единственный владелец схемы БД. Версионируемые миграции находятся в
+`backend/migrations`; Compose запускает `alembic upgrade head` отдельным
+одноразовым сервисом до API и воркера. При локальном запуске примените миграции
+из каталога `backend`:
 
-- `users.password_hash` — для входа;
-- `infrastructure_objects.external_id`, `lat`, `lon` — для карты и таблицы;
-- `infrastructure_objects.processing_status`, `processing_started_at`,
-  `processing_attempts`, `processing_error`, `processed_at`, `processed_img_url`
-  — очередь обработки и её результаты;
-- таблица `defects` — результаты распознавания;
-- индексы по `defects.object_id` и `infrastructure_objects."statusId"`.
+```bash
+cd backend
+alembic upgrade head
+```
+
+Первая миграция идемпотентно создаёт новую схему или принимает существующие
+таблицы и колонки без удаления данных. Дальнейшие изменения схемы оформляются
+новыми миграциями. API, воркер и `seed.py` схему не изменяют; `DB_BOOTSTRAP`
+больше не используется. Демо-данные по-прежнему добавляются отдельно командой
+`python seed.py`.
 
 Фото объектов хранятся в MinIO, а в `infrastructure_objects."imgUrl"` лежит
 ключ файла вида `objects/{id}/{uuid}.jpg`. API отдаёт клиенту готовую ссылку
 `/api/infrastructure-objects/{id}/photo`, поэтому менять схему БД не нужно.
-
-Файл идемпотентный (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`),
-поэтому может применяться при каждом запуске. Отключается через `DB_BOOTSTRAP=false`.
 
 ## Обработка фото ИИ (воркер)
 
@@ -207,7 +215,6 @@ worker.py  -- раз в WORKER_POLL_INTERVAL секунд берёт один о
 | --- | --- | --- |
 | `DB_HOST` | `localhost` | Хост PostgreSQL |
 | `DB_ECHO` | `false` | Логировать SQL |
-| `DB_BOOTSTRAP` | `true` | Применять `sql/schema.sql` при старте |
 | `JWT_SECRET` | `dev-secret-change-me` | Секрет подписи токена (задать в проде) |
 | `JWT_EXPIRES_MINUTES` | `720` | Время жизни токена |
 | `AUTH_REQUIRED` | `false` | Требовать токен для CRUD-эндпоинтов |

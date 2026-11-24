@@ -4,6 +4,7 @@ Requires Docker Engine + Compose v2+ (no local Node/Python installation needed).
 
 ```sh
 ./scripts/preview.sh up
+./scripts/preview.sh seed   # optional synthetic demo records
 ./scripts/preview.sh status
 ./scripts/preview.sh logs
 ./scripts/preview.sh down
@@ -21,7 +22,7 @@ photos and uploads; it never removes volumes. For another isolated instance use
 both `MGTS_PREVIEW_PROJECT=mgts-preview-2` and `MGTS_PREVIEW_PORT=3301` consistently.
 Readiness means HTTP services are running, not trained-model quality.
 
-The preview uses the real API, not mock data. The existing idempotent seed populates synthetic demo records; login: `admin` / `admin123` (preview only). These are not ML evaluation results. YOLO
+The preview uses the real API, not mock data. The explicit `seed` command populates synthetic demo records; login: `admin` / `admin123` (preview only). These are not ML evaluation results. YOLO
 worker is deliberately not started: model provisioning and ML workbench are
 separate workflows in the ML Draft PR (`cv/data_pipeline/README.md`). Uploaded
 objects will not receive automatic inference until a worker is configured.
@@ -35,3 +36,7 @@ Login API, six admin routes and five seeded objects returned successful HTTP
 responses. Browser automation crashed before interactions, so click-through
 verification remains pending. The production Nitro build is not verified;
 this preview uses the existing Nuxt development Docker entrypoint.
+
+Schema ownership: `backend/migrations/` (Alembic). Compose waits for the one-shot
+`migrate` service to succeed before API/worker. No schema SQL lives in the root or
+launcher scripts. API, worker and seed do not apply migrations.

@@ -13,14 +13,25 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Применяется только при создании нового тома (пустая БД).
-      - ./migrations.sql:/docker-entrypoint-initdb.d/01-migrations.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 5s
+
+  migrate:
+    build:
+      context: ./backend
+    command: [alembic, upgrade, head]
+    env_file:
+      - .env
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
 
   minio:
     # Официальные образы minio/minio удалены с Docker Hub (и из quay.io).
@@ -63,6 +74,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_started
     healthcheck:
@@ -94,6 +107,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       minio:
         condition: service_started
 

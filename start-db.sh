@@ -21,7 +21,7 @@ cd "$ROOT_DIR"
 
 ENV_FILE=".env"
 COMPOSE_FILE="docker-compose.yml"
-MIGRATION_FILE="migrations.sql"
+MIGRATION_FILE="backend/alembic.ini"
 MODE="${1:-}"
 
 case "$MODE" in
@@ -123,21 +123,9 @@ for i in $(seq 1 60); do
     fi
 done
 
-# --- 6. Страховка: схема из migrations.sql ---
-# При новом томе файл применяется автоматически через docker-entrypoint-initdb.d.
-# Здесь проверяем только случай, когда том уже был, но схема отсутствует.
-HAS_USERS="$(docker exec -i "$CONTAINER_NAME" psql \
-    -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT to_regclass('public.users') IS NOT NULL;" \
-    | tr -d '[:space:]')"
-
-if [ "$HAS_USERS" != "t" ]; then
-    echo "Схема не найдена, применяю $MIGRATION_FILE..."
-    docker exec -i "$CONTAINER_NAME" psql \
-        -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 \
-        < "$MIGRATION_FILE"
-else
-    echo "Схема уже создана, миграция пропущена (данные сохраняются)."
-fi
+# Apply backend-owned versioned migrations; never execute a second SQL schema.
+$COMPOSE_CMD build migrate
+$COMPOSE_CMD run --rm migrate
 
 # --- 7. Только БД? ---
 if [ "$MODE" = "--db-only" ]; then
@@ -147,7 +135,6 @@ if [ "$MODE" = "--db-only" ]; then
     echo "  Host:     localhost"
     echo "  Port:     ${DB_PORT}"
     echo "  User:     ${DB_USER}"
-    echo "  Password: ${DB_PASSWORD}"
     echo "  Database: ${DB_NAME}"
     echo "============================================"
     echo ""
@@ -205,17 +192,8 @@ else
     exit 1
 fi
 
-# --- 9. Демо-данные для пустой базы ---
-USER_COUNT="$(docker exec -i "$CONTAINER_NAME" psql \
-    -U "$DB_USER" -d "$DB_NAME" -tAc "SELECT count(*) FROM users;" \
-    | tr -d '[:space:]')"
-
-if [ "$USER_COUNT" = "0" ]; then
-    echo "База пустая, добавляю демо-данные..."
-    if ! $COMPOSE_CMD exec -T backend python seed.py; then
-        echo "Предупреждение: не удалось добавить демо-данные." >&2
-    fi
-fi
+# Demo records are opt-in, separate from schema and ordinary startup.
+echo "Для демо-данных: $COMPOSE_CMD exec -T backend python seed.py"
 
 # --- 10. Итог ---
 echo ""
