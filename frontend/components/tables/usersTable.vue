@@ -18,22 +18,14 @@ if (request.error) {
 </script>
 
 <template>
-  <section class="page-panel">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">УЧЁТНЫЕ ЗАПИСИ</p>
-        <h2 class="page-heading__title">Пользователи</h2>
-      </div>
-      <Button
-        label="Добавить пользователя"
-        icon="pi pi-plus"
-        as="router-link"
-        to="/admin/users/action"
-        class="page-heading__action"
-      />
-    </div>
+  <section class="card">
+    <Toolbar class="mb-6">
+      <template #start>
+        <Button label="Добавить пользователя" icon="pi pi-plus" as="router-link" to="/admin/users/action" />
+      </template>
+    </Toolbar>
 
-    <Message v-if="loadError" severity="error" :closable="false" class="table-message">{{ loadError }}</Message>
+    <Message v-if="loadError" severity="error" :closable="false" class="mb-4">{{ loadError }}</Message>
     <DataTable
       :value="users"
       data-key="id"
@@ -44,8 +36,15 @@ if (request.error) {
       striped-rows
       scrollable
       table-style="min-width: 68rem"
-      class="data-table"
     >
+      <template #header>
+        <div class="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Учётные записи</p>
+            <h2 class="m-0 text-xl font-semibold">Пользователи</h2>
+          </div>
+        </div>
+      </template>
       <Column field="id" header="ID" sortable />
       <Column field="username" header="Имя пользователя" sortable>
         <template #body="{ data }">{{ data.username || '—' }}</template>
@@ -79,8 +78,8 @@ if (request.error) {
         </template>
       </Column>
       <template #empty>
-        <div class="table-empty">
-          <i class="pi pi-inbox" aria-hidden="true" />
+        <div class="flex flex-col items-center justify-center gap-2 py-8 text-muted-color">
+          <i class="pi pi-inbox text-2xl" aria-hidden="true" />
           <span>{{ loadError ? 'Список временно недоступен' : 'Пользователи не найдены' }}</span>
         </div>
       </template>

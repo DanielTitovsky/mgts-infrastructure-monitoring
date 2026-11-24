@@ -2,7 +2,7 @@
 
 ## Why
 
-The existing admin screens use a minimal legacy layout that makes the object and findings workflows difficult to scan. This change adopts PrimeVue 4 with a Sakai-inspired administrative shell while preserving the current Russian-language pages and FastAPI integration.
+The existing admin screens use a minimal legacy layout that makes the object and findings workflows difficult to scan. This change adopts PrimeVue 4 with a upstream Sakai administrative shell while preserving the current Russian-language pages and FastAPI integration.
 
 ## Scope
 
@@ -15,3 +15,6 @@ The existing admin screens use a minimal legacy layout that makes the object and
 - Choosing or implementing a map provider.
 - Backend/API or deployment changes.
 - Claiming that demo records or detections represent real monitoring results.
+
+## Accepted template correction
+Use the actual MIT-licensed primefaces/sakai-vue template, pinned to ec6b6ef53ad4fa7f2861277f50f2d9e236c40372 (5.0.0), as the layout/theme/spacing source. Preserve its layout SCSS and standard Tailwind/PrimeVue page recipes rather than a custom Sakai-inspired design. Adapt only routing/SSR and MGTS navigation/data. Keep Nuxt and developer config, existing FastAPI contracts, photo workflows, explicit demo mode and honest map placeholder. Remove the rejected bespoke shell/styles after mapping retained functionality. Preserve upstream license and record file provenance. No Hookify work.

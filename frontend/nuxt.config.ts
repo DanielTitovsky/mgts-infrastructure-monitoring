@@ -1,7 +1,7 @@
 import config from './config'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import Aura from '@primeuix/themes/aura'
-import { definePreset } from '@primeuix/themes'
+import tailwindcss from '@tailwindcss/vite'
 
 // В Docker запросы /api/* уходят на backend-контейнер,
 // локально — на uvicorn по умолчанию.
@@ -11,24 +11,6 @@ const apiProxyTarget = process.env.API_PROXY_TARGET || config.apiUrl
 // Корень backend: оттуда отдаётся статика /uploads (результаты обработки ИИ).
 const backendOrigin = apiProxyTarget.replace(/\/api\/?$/, '')
 const isProduction = process.env.NODE_ENV === 'production'
-
-const MGTSAura = definePreset(Aura, {
-    semantic: {
-        primary: {
-            50: '{red.50}',
-            100: '{red.100}',
-            200: '{red.200}',
-            300: '{red.300}',
-            400: '{red.400}',
-            500: '{red.500}',
-            600: '{red.600}',
-            700: '{red.700}',
-            800: '{red.800}',
-            900: '{red.900}',
-            950: '{red.950}',
-        },
-    },
-})
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
@@ -46,9 +28,9 @@ export default defineNuxtConfig({
         options: {
             ripple: true,
             theme: {
-                preset: MGTSAura,
+                preset: Aura,
                 options: {
-                    darkModeSelector: false,
+                    darkModeSelector: '.app-dark',
                 },
             },
         },
@@ -99,8 +81,7 @@ export default defineNuxtConfig({
     },
 
     css: [
-        "@/public/fonts/inter.css",
-        'primeicons/primeicons.css',
+        '@/assets/tailwind.css',
         '@/scss/main.scss',
     ],
 
@@ -116,17 +97,12 @@ export default defineNuxtConfig({
             {name: 'format-detection', content: 'telephone=no'}
         ],
         link: [
-            {rel: 'icon', type: 'image/x-icon', href: '/favicon.ico'}
+            {rel: 'icon', type: 'image/x-icon', href: '/favicon.ico'},
+            {rel: 'stylesheet', href: 'https://fonts.cdnfonts.com/css/lato'},
         ]
     },
 
     vite: {
-        css: {
-            preprocessorOptions: {
-                scss: {
-                    additionalData: '@use "@/scss/_variables.scss" as *;',
-                },
-            },
-        }
+        plugins: [tailwindcss()],
     },
 })

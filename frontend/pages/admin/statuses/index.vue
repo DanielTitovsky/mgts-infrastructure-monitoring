@@ -10,7 +10,3 @@ definePageMeta({
 <template>
   <statuses-table/>
 </template>
-
-<style scoped>
-
-</style>

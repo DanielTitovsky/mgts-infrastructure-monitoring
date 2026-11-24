@@ -16,22 +16,14 @@ if (request.error) {
 </script>
 
 <template>
-  <section class="page-panel">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">СПРАВОЧНИК</p>
-        <h2 class="page-heading__title">Статусы</h2>
-      </div>
-      <Button
-        label="Добавить статус"
-        icon="pi pi-plus"
-        as="router-link"
-        to="/admin/statuses/action"
-        class="page-heading__action"
-      />
-    </div>
+  <section class="card">
+    <Toolbar class="mb-6">
+      <template #start>
+        <Button label="Добавить статус" icon="pi pi-plus" as="router-link" to="/admin/statuses/action" />
+      </template>
+    </Toolbar>
 
-    <Message v-if="loadError" severity="error" :closable="false" class="table-message">{{ loadError }}</Message>
+    <Message v-if="loadError" severity="error" :closable="false" class="mb-4">{{ loadError }}</Message>
     <DataTable
       :value="statuses"
       data-key="id"
@@ -42,8 +34,15 @@ if (request.error) {
       striped-rows
       scrollable
       table-style="min-width: 36rem"
-      class="data-table"
     >
+      <template #header>
+        <div class="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Справочник</p>
+            <h2 class="m-0 text-xl font-semibold">Статусы</h2>
+          </div>
+        </div>
+      </template>
       <Column field="id" header="ID" sortable />
       <Column field="type" header="Тип" sortable>
         <template #body="{ data }">{{ data.type || '—' }}</template>
@@ -65,8 +64,8 @@ if (request.error) {
         </template>
       </Column>
       <template #empty>
-        <div class="table-empty">
-          <i class="pi pi-inbox" aria-hidden="true" />
+        <div class="flex flex-col items-center justify-center gap-2 py-8 text-muted-color">
+          <i class="pi pi-inbox text-2xl" aria-hidden="true" />
           <span>{{ loadError ? 'Список временно недоступен' : 'Статусы не найдены' }}</span>
         </div>
       </template>

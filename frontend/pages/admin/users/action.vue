@@ -55,42 +55,46 @@ onMounted(() => {
 </script>
 
 <template>
-  <form class="page-panel entity-form" @submit.prevent="sendData">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">УЧЁТНЫЕ ЗАПИСИ</p>
-        <h2 class="page-heading__title">{{ isUpdateMode ? `Редактирование пользователя №${fields.id || id}` : 'Добавить пользователя' }}</h2>
-      </div>
-      <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/users" />
-    </div>
+  <form class="card flex flex-col gap-6" @submit.prevent="sendData">
+    <Toolbar>
+      <template #start>
+        <div>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Учётные записи</p>
+          <h2 class="text-2xl font-semibold m-0">{{ isUpdateMode ? `Редактирование пользователя №${fields.id || id}` : 'Добавить пользователя' }}</h2>
+        </div>
+      </template>
+      <template #end>
+        <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/users" />
+      </template>
+    </Toolbar>
 
     <Message v-if="loading" severity="info" :closable="false">Загрузка данных пользователя…</Message>
     <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
 
-    <div class="entity-form__grid">
-      <div class="form-field">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="flex flex-col gap-2">
         <label for="user-username">Имя пользователя</label>
-        <InputText id="user-username" v-model="fields.username" autocomplete="username" required class="form-control" />
+        <InputText id="user-username" v-model="fields.username" autocomplete="username" required class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="user-email">E-mail</label>
-        <InputText id="user-email" v-model="fields.email" type="email" autocomplete="email" required class="form-control" />
+        <InputText id="user-email" v-model="fields.email" type="email" autocomplete="email" required class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="user-phone">Номер телефона</label>
-        <InputText id="user-phone" v-model="fields.phone" type="tel" autocomplete="tel" class="form-control" />
+        <InputText id="user-phone" v-model="fields.phone" type="tel" autocomplete="tel" class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="user-role">Роль</label>
-        <InputText id="user-role" v-model="fields.role" class="form-control" />
+        <InputText id="user-role" v-model="fields.role" class="w-full" />
       </div>
-      <div v-if="!isUpdateMode" class="form-field">
+      <div v-if="!isUpdateMode" class="flex flex-col gap-2">
         <label for="user-password">Пароль</label>
-        <InputText id="user-password" v-model="fields.password" type="password" autocomplete="new-password" required class="form-control" />
+        <InputText id="user-password" v-model="fields.password" type="password" autocomplete="new-password" required class="w-full" />
       </div>
     </div>
 
-    <div class="entity-form__actions">
+    <div class="flex justify-end border-t border-surface-200 dark:border-surface-700 pt-4">
       <Button type="submit" :label="saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить изменения' : 'Создать пользователя')" icon="pi pi-check" :loading="saving" :disabled="loading" />
     </div>
   </form>

@@ -33,3 +33,11 @@ When the public demo-mode flag is exactly `true`, frontend requests MUST be serv
 - **THEN** requests are handled by the mock API
 - **AND** a visible notice identifies synthetic data and disabled backend requests
 - **AND** object-photo mock upload, replacement, and removal work without a backend
+
+### Requirement: Actual upstream Sakai design, not a custom imitation
+The shell, responsive menu, theme and spacing MUST derive from the pinned official Sakai template. Domain pages MUST use its standard card, toolbar, table and form patterns. Only application content, routing and integration may require adaptation; rejected custom layout styling MUST NOT remain as an alternative. Preserve MIT attribution and source revision.
+
+#### Scenario: Template identity is checked
+- **WHEN** the imported layout styles and provenance manifest are verified
+- **THEN** the pinned upstream source is identifiable and unchanged files match it
+- **AND** adaptations are documented and all existing application routes remain available.

@@ -77,23 +77,15 @@ function statusSeverity(item: Record<string, any>) {
 </script>
 
 <template>
-  <section class="page-panel">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">РЕЕСТР ИНФРАСТРУКТУРЫ</p>
-        <h2 class="page-heading__title">Объекты инфраструктуры</h2>
-      </div>
-      <Button
-        label="Добавить объект"
-        icon="pi pi-plus"
-        as="router-link"
-        to="/admin/objects/action"
-        class="page-heading__action"
-      />
-    </div>
+  <section class="card">
+    <Toolbar class="mb-6">
+      <template #start>
+        <Button label="Добавить объект" icon="pi pi-plus" as="router-link" to="/admin/objects/action" />
+      </template>
+    </Toolbar>
 
-    <Message v-if="loadError" severity="error" :closable="false" class="table-message">{{ loadError }}</Message>
-    <Message v-else-if="statusError" severity="warn" :closable="false" class="table-message">{{ statusError }}</Message>
+    <Message v-if="loadError" severity="error" :closable="false" class="mb-4">{{ loadError }}</Message>
+    <Message v-else-if="statusError" severity="warn" :closable="false" class="mb-4">{{ statusError }}</Message>
 
     <DataTable
       :value="objects"
@@ -105,8 +97,15 @@ function statusSeverity(item: Record<string, any>) {
       striped-rows
       scrollable
       table-style="min-width: 76rem"
-      class="data-table"
     >
+      <template #header>
+        <div class="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Реестр инфраструктуры</p>
+            <h2 class="m-0 text-xl font-semibold">Объекты</h2>
+          </div>
+        </div>
+      </template>
       <Column field="id" header="ID" sortable />
       <Column header="Фото" header-style="width: 6rem">
         <template #body="{ data }">
@@ -114,10 +113,10 @@ function statusSeverity(item: Record<string, any>) {
             v-if="data.img_url"
             :src="data.img_url"
             alt="Фото объекта"
-            image-class="object-thumb"
+            image-class="h-12 w-16 rounded-md border border-surface-200 dark:border-surface-700 object-cover"
             preview
           />
-          <span v-else class="muted-value">Нет фото</span>
+          <span v-else class="text-sm text-muted-color">Нет фото</span>
         </template>
       </Column>
       <Column field="type" header="Тип" sortable>
@@ -158,8 +157,8 @@ function statusSeverity(item: Record<string, any>) {
         </template>
       </Column>
       <template #empty>
-        <div class="table-empty">
-          <i class="pi pi-inbox" aria-hidden="true" />
+        <div class="flex flex-col items-center justify-center gap-2 py-8 text-muted-color">
+          <i class="pi pi-inbox text-2xl" aria-hidden="true" />
           <span>{{ loadError ? 'Список временно недоступен' : 'Объекты не найдены' }}</span>
         </div>
       </template>

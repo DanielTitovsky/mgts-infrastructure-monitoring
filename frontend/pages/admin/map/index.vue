@@ -6,18 +6,16 @@ definePageMeta({
 </script>
 
 <template>
-  <section class="page-panel map-placeholder">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">РАСПОЛОЖЕНИЕ</p>
-        <h2 class="page-heading__title">Карта</h2>
-      </div>
+  <section class="card flex flex-col gap-6">
+    <div>
+      <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Расположение</p>
+      <h2 class="text-2xl font-semibold m-0">Карта</h2>
     </div>
 
-    <div class="map-placeholder__body">
-      <span class="map-placeholder__icon" aria-hidden="true"><i class="pi pi-map" /></span>
-      <h3>Карта пока не подключена</h3>
-      <p>
+    <div class="flex min-h-80 flex-col items-center justify-center gap-4 rounded-lg border border-dashed border-surface-300 dark:border-surface-600 p-8 text-center">
+      <i class="pi pi-map text-3xl text-primary" aria-hidden="true" />
+      <h3 class="text-xl font-semibold m-0">Карта пока не подключена</h3>
+      <p class="text-muted-color max-w-prose m-0">
         Провайдер картографической подложки ещё не выбран. Записи с доступными координатами
         остаются в списках объектов и дефектов; здесь не отображаются вымышленные точки.
       </p>

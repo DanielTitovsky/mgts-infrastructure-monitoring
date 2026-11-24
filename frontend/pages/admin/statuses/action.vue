@@ -55,28 +55,34 @@ onMounted(() => {
 </script>
 
 <template>
-  <form class="page-panel entity-form entity-form--narrow" @submit.prevent="sendData">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">СПРАВОЧНИК</p>
-        <h2 class="page-heading__title">{{ isUpdateMode ? `Редактирование статуса №${fields.id || id}` : 'Добавить статус' }}</h2>
-      </div>
-      <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/statuses" />
-    </div>
+  <form class="card flex flex-col gap-6 max-w-3xl" @submit.prevent="sendData">
+    <Toolbar>
+      <template #start>
+        <div>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Справочник</p>
+          <h2 class="text-2xl font-semibold m-0">{{ isUpdateMode ? `Редактирование статуса №${fields.id || id}` : 'Добавить статус' }}</h2>
+        </div>
+      </template>
+      <template #end>
+        <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/statuses" />
+      </template>
+    </Toolbar>
 
     <Message v-if="loading" severity="info" :closable="false">Загрузка статуса…</Message>
     <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
 
-    <div class="form-field">
-      <label for="status-type">Тип</label>
-      <InputText id="status-type" v-model="fields.type" required class="form-control" />
-    </div>
-    <div class="form-field">
-      <label for="status-description">Описание</label>
-      <Textarea id="status-description" v-model="fields.description" rows="5" auto-resize class="form-control" />
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2">
+        <label for="status-type">Тип</label>
+        <InputText id="status-type" v-model="fields.type" required class="w-full" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="status-description">Описание</label>
+        <Textarea id="status-description" v-model="fields.description" rows="5" auto-resize class="w-full" />
+      </div>
     </div>
 
-    <div class="entity-form__actions">
+    <div class="flex justify-end border-t border-surface-200 dark:border-surface-700 pt-4">
       <Button type="submit" :label="saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить изменения' : 'Создать статус')" icon="pi pi-check" :loading="saving" :disabled="loading" />
     </div>
   </form>

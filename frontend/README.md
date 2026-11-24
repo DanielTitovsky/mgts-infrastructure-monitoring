@@ -1,6 +1,10 @@
 # Frontend — мониторинг инфраструктуры МГТС
 
-Nuxt 3 application using PrimeVue 4 with the Aura preset. The admin shell adapts Sakai's sidebar, topbar and content-area conventions to the existing Russian-language MGTS screens; no Sakai demo pages or assets are bundled. [PrimeFaces Sakai Vue](https://github.com/primefaces/sakai-vue) is MIT-licensed.
+Nuxt 3 application using PrimeVue 4 with the official Sakai Vue 5.0.0 admin
+shell and its pinned upstream styles and Tailwind utilities. Sakai demo pages
+are not bundled. Source revisions, adaptations, license attribution, and the
+imported-file hash map are documented in [SAKAI_TEMPLATE.md](./SAKAI_TEMPLATE.md)
+and [`sakai-template-manifest.json`](./sakai-template-manifest.json).
 
 ## Install and run
 
