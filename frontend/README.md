@@ -29,3 +29,10 @@ NUXT_PUBLIC_DEMO_MODE=true npm run dev
 With the flag enabled, `useRequest` routes to the in-memory `services/mockApi.ts`; it does not send API requests to FastAPI. The UI displays **«Демонстрация — синтетические данные, без реального ИИ»**. Mock mutations last only for the running process and are reset on restart. Omit the flag or set it to `false` to use the real API path.
 
 For a production build that should run in demo mode, provide `NUXT_PUBLIC_DEMO_MODE=true` to the build/runtime environment; it is a public mode flag, not a secret.
+
+## Developer configuration
+
+`config.ts` owns editable local defaults, including `apiUrl` and `useMocks`.
+Nuxt consumes these defaults; `API_PROXY_TARGET` overrides the proxy target, and
+`NUXT_PUBLIC_DEMO_MODE` overrides the runtime mock switch in Docker/Dokploy.
+Do not put credentials in this public frontend configuration.

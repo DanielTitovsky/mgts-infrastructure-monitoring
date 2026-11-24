@@ -6,3 +6,4 @@
 - [x] Run focused frontend tests and update frontend instructions for the supported demo mode.
 - [ ] Complete a production build. The client and SSR bundles compiled, but the build process terminated during Nitro generation under host memory/swap pressure; no successful build result is claimed.
 - [x] Inspect the final frontend/OpenSpec diff and create one focused candidate commit.
+- [x] Restore developer-owned frontend/config.ts defaults and connect them to Nuxt runtime config; environment overrides must still work.
