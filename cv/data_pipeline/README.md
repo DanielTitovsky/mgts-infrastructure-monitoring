@@ -37,6 +37,71 @@ cd cv/data_pipeline
 uv run --extra test python -m pytest --cov=mgts_data_pipeline --cov-report=term-missing
 ```
 
+## Interactive local workbench (optional)
+
+Install the optional Marimo UI, then either run it on your local machine or
+use the configured server preview:
+
+```sh
+uv sync --project cv/data_pipeline --extra ui
+# Local app; Marimo prints its URL and listens on loopback by default.
+uv run --project cv/data_pipeline --extra ui marimo run \
+  cv/data_pipeline/notebooks/dataset_workbench.py
+# Static notebook check.
+uv run --project cv/data_pipeline --extra ui marimo check --strict \
+  cv/data_pipeline/notebooks/dataset_workbench.py
+```
+
+The app is a thin form over the same `mgts-datasets` CLI. It does not duplicate
+normalization code. Select an action, source(s), roots and paths, then submit
+the form: **opening the app or editing form controls does not run a pipeline
+operation**. The default is the known-working `broken_poles_v2` starter source;
+its data is train-only and remains unsuitable for evaluation without a separate
+held-out split. The form exposes no image preview, model training, Hub upload,
+or token field. For private Hub downloads, provision `HF_TOKEN` to the server
+process through the configured secret store.
+
+For a user-browser preview on the configured server, the workbench launcher
+starts, checks, or stops the app in the dedicated demo session. It uses
+password authentication on loopback and prints the server PID/readiness. The
+current task's access path is a local SSH forward, not a public server port:
+
+```sh
+bash cv/data_pipeline/workbench.sh start
+bash cv/data_pipeline/workbench.sh status
+bash cv/data_pipeline/workbench.sh stop
+```
+
+The shared password is stored only in canonical
+`/home/iter/projects/iter-private-setup/shared.env` as
+`MARIMO_WORKBENCH_PASSWORD`; `/home/iter/.kiro/secrets.env` is its symlink
+projection. Do not put the password in shell history or the command line.
+On this server, open the app at `http://127.0.0.1:18790` on the user's laptop
+after the reverse-SSH forward is active. The tunnel must target server port
+8790. Do not expose the authenticated app through a public IP or bind it to
+`0.0.0.0` for this local preview. On the configured laptop, where `dev-server`
+is its SSH alias for this host, start the loopback-only forward with:
+
+```sh
+tmux new-session -d -s mgts-workbench-tunnel \
+  'AUTOSSH_GATETIME=0 autossh -M 0 -N -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -L 127.0.0.1:18790:127.0.0.1:8790 dev-server'
+```
+
+The authenticated server runs in the dedicated Zellij session
+`mgts-dataset-workbench-8790`; it receives the configured password through
+Marimo's stdin password-file option and redacts Marimo's token-bearing startup
+URL before it reaches terminal output. To stop access, run
+`tmux kill-session -t mgts-workbench-tunnel` on the laptop and
+`bash cv/data_pipeline/workbench.sh stop` on the server. The password itself
+remains only in the canonical local secret store and must not be put in a URL,
+command line, or log.
+
+The all-source recipe is intentionally not exposed in the UI: Powerline Faults
+still fails closed on conflicting duplicate labels even when invalid rows are
+quarantined. Other classes remain separate: lean is not broken,
+Compromised-Pole is not broken, and object-localization sources are not defect
+labels. The UI displays these limitations before the form.
+
 `fetch` reads only pinned files from private Hugging Face dataset revision
 `8d78368c4407e489ee7e0a3295607e76afc040f7`; it never uploads or modifies Hub
 state. On a new machine it downloads the three ZIP archives **and** their source

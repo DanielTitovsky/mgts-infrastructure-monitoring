@@ -7,6 +7,11 @@
 - [x] Document commands and limitations including known Powerline duplicate-label blocker.
 - [x] Correct fresh-machine ZIP fetching and Parquet class-name provenance.
 - [x] Correct portable YAML root resolution with regression test (red then green).
-- [x] Resolve publishing preference: local only, no push/PR.
+- [x] Resolve publishing preference: the initial local-only preference was superseded by explicit WIP-PR authorization; publication is coordinator-owned.
 - [x] Complete final PD-Defect smoke: 1,801 images / 2,182 annotations, valid=true; record evidence.
-- [x] Prepare verified focused local commit; no push/PR.
+- [x] Prepare verified focused local commit; this implementation worktree remains unpushed and PR publication is coordinator-owned.
+- [x] Add optional Marimo workbench over existing CLI, with explicit-submit-only execution and safe starter defaults.
+- [x] Test submit gating, CLI argument mapping, configuration errors, and secret-safe launcher behavior; verify the Marimo app and local text-only smoke.
+- [x] Document local optional install/launch and current dataset risks in the governing pipeline guide.
+- [x] Start authenticated server-loopback preview in a dedicated session; verify password login, PID/readiness, no credential in argv/environment/output, and laptop-forward HTTP/text without exposing a public port.
+- [ ] Coordinator: publish the authorized Draft PR for the Marimo workbench candidate and verify the canonical PR identity, branch SHA, API head SHA, and commit membership.

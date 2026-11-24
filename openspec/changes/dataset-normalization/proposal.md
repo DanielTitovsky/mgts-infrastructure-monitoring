@@ -9,7 +9,34 @@ Safety: reject archive traversal/symlinks and pathological expansion, bad image 
 Acceptance: unit/integration/CLI tests including malicious archive and corrupt labels; >=80% focused coverage; real source smoke runs with numeric inspection only (no vision); documentation and six-source status matrix; source code reviewed locally, focused commit, no protected merge. Publishing a new PR requires current-task user authorization.
 
 ## Clarifications from candidate review
-- User requested local-only delivery: no push or PR.
+- The initial local-only preference was later superseded by explicit
+  authorization for a WIP PR. Forge publication remains coordinator-owned;
+  implementation work in this worktree is not pushed by this agent.
 - Fetch must bootstrap every source on a fresh machine, including ZIP archives and their manifests, not rely on session-specific /tmp files.
 - Read actual Parquet ClassLabel names, not opaque numeric names when names exist.
 - A dataset blocked by conflicting duplicate annotations must remain explicitly blocked; do not arbitrarily keep one annotation. Documentation must offer an executable known-working recipe rather than a known-failing all-source command.
+
+## Local interactive workbench
+
+Provide an optional Marimo UI over the existing CLI operations; normalization
+logic and safety rules remain owned by the CLI. The UI offers inspect, fetch,
+normalize, and validate, source selection, archive/Hub roots, output/validation
+paths, and the existing strict-invalid/quarantine flags. Default source
+selection is the verified `broken_poles_v2` starter recipe. The user must
+submit the form explicitly; opening the app or editing controls must never
+inspect, fetch, normalize, or validate data. Render structured reports and
+surface source limitations, especially train-only status and the blocked
+Powerline/all-source path. Marimo remains an optional dependency. This is a
+local data-preparation UI only: no training, upload, secret entry, or image
+preview. When the user requests a server-hosted preview, use the dedicated
+demo session and configured reverse-SSH port forward. Bind the
+password-authenticated app to server loopback only; do not expose a public IP or
+interface.
+
+Acceptance: focused tests prove the unsubmitted form does no work, submitted
+configuration maps to existing CLI arguments, and invalid/incomplete
+configuration fails before CLI execution. `marimo check` and a text-only local
+runtime smoke verify the app; docs state the optional install and local launch
+commands. The requested server preview must have a protected canonical auth
+secret, a verified PID/readiness result, no credential in logs/argv, and an
+HTTP/text response through the laptop's loopback forward.

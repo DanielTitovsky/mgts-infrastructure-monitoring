@@ -12,6 +12,7 @@ dependencies = [
 
 [project.optional-dependencies]
 test = ["pytest>=8,<9", "pytest-cov>=6,<8"]
+ui = ["marimo>=0.15,<1"]
 
 [project.scripts]
 mgts-datasets = "mgts_data_pipeline.cli:main"
