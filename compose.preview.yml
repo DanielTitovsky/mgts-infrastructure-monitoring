@@ -13,6 +13,16 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
+  db-init:
+    image: postgres:15-alpine
+    environment:
+      PGPASSWORD: local-preview-only
+    volumes:
+      - ./scripts/preview-schema.sql:/schema.sql:ro
+    command: [psql, -h, db, -U, preview, -d, mgts, -v, ON_ERROR_STOP=1, -f, /schema.sql]
+    depends_on:
+      db:
+        condition: service_healthy
   minio:
     image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     command: server /data
@@ -44,6 +54,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
+      db-init:
+        condition: service_completed_successfully
     restart: on-failure:5
     healthcheck:
       test: [CMD, python, '-c', "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
