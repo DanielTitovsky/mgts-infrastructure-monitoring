@@ -1,46 +1,75 @@
 <script setup lang="ts">
-import {useRequest} from "~/services/useRequest";
+import { useRequest } from '~/services/useRequest'
 
-const request = await useRequest('/api/statuses');
+const loading = ref(true)
+const loadError = ref('')
+const statuses = ref<Record<string, any>[]>([])
 
-const statuses = ref(request.data)
+const request = await useRequest('/api/statuses')
+loading.value = false
+
+if (request.error) {
+  loadError.value = request.error.description || 'Не удалось загрузить список статусов.'
+} else if (Array.isArray(request.data)) {
+  statuses.value = request.data
+}
 </script>
 
 <template>
-  <div class="all-table">
-    <h1 class="title">Статусы</h1>
-    <table class="table">
-      <thead>
-      <tr class="table__thead-str">
-        <th class="table__thead-item">ID</th>
-        <th class="table__thead-item">Тип</th>
-        <th class="table__thead-item">Описание</th>
-        <th></th>
-      </tr>
-      </thead>
-      <tbody>
-      <tr v-for="item in statuses" :key="`status_${item.id}`" class="table__tbody-str">
-        <td class="table__item">
-          {{ item?.id || '-' }}
-        </td>
-        <td class="table__item">
-          {{ item?.type || '-' }}
-        </td>
-        <td class="table__item">
-          {{ item?.description || '-' }}
-        </td>
-        <td>
-          <nuxt-link :to="{ path: '/admin/statuses/action', query: { id: item.id } }">
-            <icon name="icon-edit"/>
-          </nuxt-link>
-        </td>
-      </tr>
-      </tbody>
-    </table>
-    <nuxt-link to="/admin/statuses/action" class="add-button">Добавить статус</nuxt-link>
-  </div>
+  <section class="page-panel">
+    <div class="page-heading">
+      <div>
+        <p class="page-heading__eyebrow">СПРАВОЧНИК</p>
+        <h2 class="page-heading__title">Статусы</h2>
+      </div>
+      <Button
+        label="Добавить статус"
+        icon="pi pi-plus"
+        as="router-link"
+        to="/admin/statuses/action"
+        class="page-heading__action"
+      />
+    </div>
+
+    <Message v-if="loadError" severity="error" :closable="false" class="table-message">{{ loadError }}</Message>
+    <DataTable
+      :value="statuses"
+      data-key="id"
+      :loading="loading"
+      :paginator="statuses.length > 8"
+      :rows="8"
+      :rows-per-page-options="[8, 16, 32]"
+      striped-rows
+      scrollable
+      table-style="min-width: 36rem"
+      class="data-table"
+    >
+      <Column field="id" header="ID" sortable />
+      <Column field="type" header="Тип" sortable>
+        <template #body="{ data }">{{ data.type || '—' }}</template>
+      </Column>
+      <Column field="description" header="Описание">
+        <template #body="{ data }">{{ data.description || '—' }}</template>
+      </Column>
+      <Column header="Действие" header-style="width: 5rem">
+        <template #body="{ data }">
+          <Button
+            as="router-link"
+            :to="{ path: '/admin/statuses/action', query: { id: data.id } }"
+            icon="pi pi-pencil"
+            text
+            rounded
+            severity="secondary"
+            :aria-label="`Редактировать статус ${data.type || data.id}`"
+          />
+        </template>
+      </Column>
+      <template #empty>
+        <div class="table-empty">
+          <i class="pi pi-inbox" aria-hidden="true" />
+          <span>{{ loadError ? 'Список временно недоступен' : 'Статусы не найдены' }}</span>
+        </div>
+      </template>
+    </DataTable>
+  </section>
 </template>
-
-<style scoped>
-
-</style>

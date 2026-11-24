@@ -1,62 +1,101 @@
 <script setup lang="ts">
-import {useRequest} from "~/services/useRequest";
-import {useNotifications} from "~/composables/useNotifications";
+import { useNotifications } from '~/composables/useNotifications'
+import { useRequest } from '~/services/useRequest'
 
-const $router = useRouter();
-const notifications = useNotifications();
+definePageMeta({ layout: 'default' })
 
-const login = ref()
-const password = ref()
+const router = useRouter()
+const notifications = useNotifications()
+const login = ref('')
+const password = ref('')
+const submitting = ref(false)
+const formError = ref('')
 
-async function OnSubmitForm() {
-  const request = await useRequest('/api/auth/login',{
-    method:'POST',
-    body: {
-      username: login.value,
-      password: password.value
-    },
-    successMessage: false, // покажем после сохранения токена
-    errorTitle: 'Не удалось войти'
-  })
+async function onSubmit() {
+  if (submitting.value) return
 
-  // Об ошибке уже сообщил useRequest — просто остаёмся на форме входа.
-  if (!!request.error) return
+  submitting.value = true
+  formError.value = ''
 
-  const token = request.data?.token
+  try {
+    const request = await useRequest('/api/auth/login', {
+      method: 'POST',
+      body: { username: login.value, password: password.value },
+      successMessage: false,
+      errorTitle: 'Не удалось войти',
+    })
 
-  if (!token) {
-    notifications.error('Сервер не вернул токен доступа.', 'Не удалось войти')
-    return
+    if (request.error) {
+      formError.value = request.error.description || request.error.message || 'Проверьте данные и попробуйте ещё раз.'
+      return
+    }
+
+    const token = request.data?.token
+    if (!token) {
+      formError.value = 'Сервер не вернул токен доступа.'
+      notifications.error(formError.value, 'Не удалось войти')
+      return
+    }
+
+    // Keep the existing FastAPI token-cookie contract.
+    useCookie('token').value = token
+    notifications.success('Вы вошли в систему')
+    await router.push('/admin/objects')
+  } finally {
+    submitting.value = false
   }
-
-  const cookieToken = useCookie('token');
-  cookieToken.value = token;
-  notifications.success('Вы вошли в систему');
-
-  await $router.push("/admin/users");
 }
 </script>
 
 <template>
-<div class="container admin-page">
-  <form class="form-auth" @submit.prevent="OnSubmitForm">
-    <h1 class="form-auth__title">Вход в систему</h1>
-    <input v-model="login" name="login" type="text" class="form-auth__input" placeholder="Имя пользователя" required>
-    <input v-model="password" name="password" type="password" class="form-auth__input" placeholder="Пароль" required>
-    <button class="form-auth__btn">Войти</button>
-    <p class="form-auth__description">
-      <span>Забыли пароль?</span><br>
-      Обратитесь к администратору системы мониторинга.
-    </p>
-  </form>
-</div>
-</template>
+  <main class="login-shell">
+    <Card class="login-card">
+      <template #content>
+        <div class="login-brand">
+          <span class="brand-mark" aria-hidden="true">М</span>
+          <span class="login-brand__name">МГТС</span>
+        </div>
+        <p class="login-eyebrow">ГОРОДСКАЯ СЕТЕВАЯ ИНФРАСТРУКТУРА</p>
+        <h1>Вход в систему</h1>
+        <p class="login-intro">Продолжите работу с объектами и результатами мониторинга.</p>
 
-<style scoped lang="scss">
-.admin-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-</style>
+        <form class="login-form" @submit.prevent="onSubmit">
+          <div class="form-field">
+            <label for="login-username">Имя пользователя</label>
+            <InputText
+              id="login-username"
+              v-model="login"
+              name="username"
+              autocomplete="username"
+              placeholder="Введите имя пользователя"
+              required
+              class="form-control"
+            />
+          </div>
+          <div class="form-field">
+            <label for="login-password">Пароль</label>
+            <InputText
+              id="login-password"
+              v-model="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Введите пароль"
+              required
+              class="form-control"
+            />
+          </div>
+
+          <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
+          <Button type="submit" label="Войти" icon="pi pi-arrow-right" icon-pos="right" :loading="submitting" />
+        </form>
+
+        <p class="login-help">
+          <i class="pi pi-lock" aria-hidden="true" />
+          Забыли пароль? Обратитесь к администратору системы мониторинга.
+        </p>
+      </template>
+    </Card>
+    <p class="login-footer">Система мониторинга городской инфраструктуры</p>
+  </main>
+</template>

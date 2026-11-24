@@ -31,6 +31,13 @@ const isUpdateMode = computed(() => !!id.value)
 
 const fields = ref<Record<string, any>>({})
 const statuses = ref<Record<string, any>[]>([])
+const statusOptions = computed(() => [
+  { label: 'Статус не выбран', value: null },
+  ...statuses.value.map(status => ({
+    label: `${status.type}${status.description ? ` — ${status.description}` : ''}`,
+    value: status.id,
+  })),
+])
 const loading = ref(false)
 const saving = ref(false)
 const formError = ref('')
@@ -42,7 +49,7 @@ const photoRemoved = ref(false)
 // Оверлей на всю страницу показываем только во время перетаскивания файла.
 const isDragging = ref(false)
 const dragDepth = ref(0)
-// Прибавляется после загрузки нового фото, чтобы <img> не показал старую версию из кэша.
+// Прибавляется после загрузки нового фото, чтобы превью не показало старую версию из кэша.
 const photoVersion = ref(0)
 
 const hasSavedPhoto = computed(() => !!fields.value?.img_url)
@@ -335,240 +342,322 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <form class="action-table" @submit.prevent="sendData">
-    <h1 class="action-table__title">{{
-        isUpdateMode ? `Редактирование объекта ID ${fields.id || id}` : 'Добавить объект'
-      }}</h1>
+  <form class="page-panel entity-form object-form" @submit.prevent="sendData">
+    <div class="page-heading">
+      <div>
+        <p class="page-heading__eyebrow">РЕЕСТР ИНФРАСТРУКТУРЫ</p>
+        <h2 class="page-heading__title">{{ isUpdateMode ? `Объект №${fields.id || id}` : 'Добавить объект' }}</h2>
+      </div>
+      <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/objects" />
+    </div>
 
-    <p v-if="loading" class="action-table__hint">Загрузка данных объекта…</p>
+    <Message v-if="loading" severity="info" :closable="false">Загрузка данных объекта…</Message>
+    <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
 
-    <input class="action-table__input" type="text" placeholder="Тип объекта" v-model="fields.type" required/>
-    <input class="action-table__input" type="text" placeholder="Внешний идентификатор" v-model="fields.external_id"/>
-    <input class="action-table__input" type="text" placeholder="Место" v-model="fields.place"/>
-    <input class="action-table__input" type="text" placeholder="Широта" v-model="fields.lat"/>
-    <input class="action-table__input" type="text" placeholder="Долгота" v-model="fields.lon"/>
+    <div class="entity-form__grid">
+      <div class="form-field">
+        <label for="object-type">Тип объекта</label>
+        <InputText id="object-type" v-model="fields.type" required class="form-control" />
+      </div>
+      <div class="form-field">
+        <label for="object-external-id">Внешний идентификатор</label>
+        <InputText id="object-external-id" v-model="fields.external_id" class="form-control" />
+      </div>
+      <div class="form-field entity-form__wide">
+        <label for="object-place">Место</label>
+        <InputText id="object-place" v-model="fields.place" class="form-control" />
+      </div>
+      <div class="form-field">
+        <label for="object-lat">Широта</label>
+        <InputText id="object-lat" v-model="fields.lat" inputmode="decimal" class="form-control" />
+      </div>
+      <div class="form-field">
+        <label for="object-lon">Долгота</label>
+        <InputText id="object-lon" v-model="fields.lon" inputmode="decimal" class="form-control" />
+      </div>
+      <div class="form-field entity-form__wide">
+        <label for="object-status">Статус</label>
+        <Select
+          v-if="statuses.length"
+          input-id="object-status"
+          v-model="fields.status_id"
+          :options="statusOptions"
+          option-label="label"
+          option-value="value"
+          placeholder="Выберите статус"
+          class="form-control"
+        />
+        <InputText v-else id="object-status" v-model="fields.status_id" placeholder="ID статуса" class="form-control" />
+      </div>
+    </div>
 
-    <select v-if="statuses.length" class="action-table__input" v-model="fields.status_id">
-      <option :value="null">Статус не выбран</option>
-      <option v-for="status in statuses" :key="`status_${status.id}`" :value="status.id">
-        {{ status.type }}{{ status.description ? ` — ${status.description}` : '' }}
-      </option>
-    </select>
-    <input v-else class="action-table__input" type="text" placeholder="ID статуса" v-model="fields.status_id"/>
-
-    <section class="action-table__photo">
-      <h2 class="action-table__photo-title">Фото объекта</h2>
-      <p class="action-table__hint">
+    <section class="photo-section" aria-labelledby="object-photo-heading">
+      <div class="photo-section__heading">
+        <div>
+          <p class="page-heading__eyebrow">ИЗОБРАЖЕНИЕ</p>
+          <h3 id="object-photo-heading">Фото объекта</h3>
+        </div>
+        <Tag v-if="processingLabel" :value="processingLabel" :severity="fields.processing_status === 'failed' ? 'danger' : fields.processing_status === 'done' ? 'success' : 'warn'" />
+      </div>
+      <p class="photo-section__hint">
         JPEG, PNG или WebP, не больше 5 МБ. Одно фото на объект — новое заменит предыдущее.
         Файл можно перетащить в любое место страницы.
       </p>
 
-      <div v-if="previewUrl" class="action-table__photo-content">
-        <img class="action-table__photo-image" :src="previewUrl" alt="Фото объекта"/>
-        <div class="action-table__photo-actions">
-          <button type="button" class="action-table__photo-button" @click="openFileDialog">
-            Выбрать другое фото
-          </button>
-          <button
-            v-if="!photoRemoved"
+      <div class="photo-workspace">
+        <div v-if="previewUrl" class="photo-preview">
+          <Image :src="previewUrl" alt="Фото объекта" image-class="photo-preview__image" preview />
+          <div class="photo-preview__meta">
+            <span>{{ photoFile ? 'Предпросмотр выбранного файла' : 'Текущее фото объекта' }}</span>
+            <Tag v-if="photoRemoved" value="Будет удалено после сохранения" severity="warn" />
+          </div>
+        </div>
+        <div v-else class="photo-empty">
+          <span class="photo-empty__icon" aria-hidden="true"><i class="pi pi-image" /></span>
+          <strong>Фото не загружено</strong>
+          <span>Добавьте изображение, чтобы оно было связано с объектом.</span>
+        </div>
+
+        <div class="photo-controls">
+          <Button
+            :label="previewUrl ? 'Выбрать другое фото' : 'Прикрепить фото'"
+            :icon="previewUrl ? 'pi pi-refresh' : 'pi pi-upload'"
             type="button"
-            class="action-table__photo-button"
+            outlined
+            @click="openFileDialog"
+          />
+          <Button
+            v-if="previewUrl && !photoRemoved"
+            label="Удалить фото"
+            icon="pi pi-trash"
+            type="button"
+            severity="danger"
+            text
             @click="markPhotoForRemoval"
-          >
-            Удалить фото
-          </button>
-          <button
-            v-else-if="hasSavedPhoto"
+          />
+          <Button
+            v-else-if="photoRemoved && hasSavedPhoto"
+            label="Отменить удаление"
+            icon="pi pi-undo"
             type="button"
-            class="action-table__photo-button"
+            severity="secondary"
+            text
             @click="cancelPhotoRemoval"
-          >
-            Отменить удаление
-          </button>
+          />
+          <input
+            id="object-photo"
+            ref="photoInput"
+            class="visually-hidden-file-input"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            aria-label="Выберите фото объекта"
+            @change="onPhotoSelected"
+          />
+          <span v-if="photoFile" class="photo-controls__filename">Выбрано: {{ photoFile.name }}</span>
         </div>
       </div>
 
-      <div v-else class="action-table__photo-actions">
-        <span class="action-table__photo-empty">Фото не загружено</span>
-        <button type="button" class="action-table__photo-button" @click="openFileDialog">
-          Прикрепить фото
-        </button>
-      </div>
-
-      <input
-        id="object-photo"
-        ref="photoInput"
-        class="action-table__input-file"
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        @change="onPhotoSelected"
-      />
-
-      <p v-if="photoFile" class="action-table__hint">Выбрано: {{ photoFile.name }}</p>
-      <p v-if="photoRemoved && hasSavedPhoto" class="action-table__hint">
-        Фото будет удалено после сохранения объекта.
-      </p>
-
-      <p v-if="processingLabel" class="action-table__hint">
-        Статус обработки: {{ processingLabel }}
-      </p>
-      <p v-if="processingError" class="action-table__error">
+      <Message v-if="processingError" severity="error" :closable="false" class="photo-processing-error">
         Ошибка обработки: {{ processingError }}
-      </p>
+      </Message>
 
-      <div v-if="processedPhotoUrl" class="action-table__photo-processed">
-        <span class="action-table__hint">Результат обработки ИИ</span>
-        <a :href="processedPhotoUrl" target="_blank" rel="noopener">
-          <img :src="processedPhotoUrl" alt="Результат обработки ИИ"/>
+      <div v-if="processedPhotoUrl" class="processed-photo">
+        <div>
+          <p class="page-heading__eyebrow">РЕЗУЛЬТАТ ОБРАБОТКИ</p>
+          <h4>Аннотированное изображение</h4>
+        </div>
+        <a :href="processedPhotoUrl" target="_blank" rel="noopener noreferrer" aria-label="Открыть аннотированное изображение">
+          <Image :src="processedPhotoUrl" alt="Аннотированное изображение объекта" image-class="processed-photo__image" preview />
         </a>
       </div>
     </section>
 
-    <p v-if="formError" class="action-table__error">{{ formError }}</p>
-
-    <button type="submit" class="add-button" :disabled="saving || loading">
-      {{ saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить' : 'Добавить') }}
-    </button>
+    <div class="entity-form__actions">
+      <Button type="submit" :label="saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить изменения' : 'Создать объект')" icon="pi pi-check" :loading="saving" :disabled="loading" />
+    </div>
   </form>
 
   <Teleport to="body">
-    <div v-if="isDragging" class="photo-drop-overlay">
-      <span class="photo-drop-overlay__plus">+</span>
-      <span class="photo-drop-overlay__text">Отпустите файл, чтобы прикрепить фото</span>
+    <div v-if="isDragging" class="photo-drop-overlay" role="status">
+      <span class="photo-drop-overlay__icon" aria-hidden="true"><i class="pi pi-cloud-upload" /></span>
+      <span>Отпустите изображение, чтобы прикрепить фото</span>
     </div>
   </Teleport>
 </template>
 
 <style scoped lang="scss">
-.action-table {
-  &__photo {
-    width: 100%;
-    border-top: 1px solid #E3E3E3;
-    margin: 10px 0 20px;
-    padding-top: 20px;
-  }
-
-  &__photo-title {
-    color: #0D47A1;
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0 0 6px;
-  }
-
-  &__photo-content,
-  &__photo-processed {
-    img {
-      display: block;
-      width: 100%;
-      max-width: 320px;
-      max-height: 240px;
-      object-fit: contain;
-      border-radius: 8px;
-      border: 1px solid #E4E4E4;
-      background: #F7F7F9;
-    }
-  }
-
-  &__photo-content {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    max-width: 320px;
-  }
-
-  &__photo-actions {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-    margin-top: 10px;
-  }
-
-  // Единый стиль для «Выбрать другое фото», «Удалить фото» и «Прикрепить фото».
-  &__photo-button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 12px;
-    border: 1px solid rgba(255, 255, 255, .8);
-    border-radius: 5px;
-    background: linear-gradient(26deg, #0D47A1, #3e669a);
-    color: #FFF;
-    font-family: inherit;
-    font-size: 13px;
-    font-weight: 600;
-    line-height: 1.2;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: opacity .2s ease;
-
-    &:hover {
-      opacity: .85;
-    }
-  }
-
-  &__photo-processed {
-    margin-top: 16px;
-
-    a {
-      display: inline-block;
-      margin-top: 6px;
-    }
-  }
-
-  &__photo-empty {
-    display: block;
-    color: #7A7A7A;
-    font-size: 14px;
-  }
-
-  &__hint {
-    color: #7A7A7A;
-    font-size: 13px;
-    line-height: 1.4;
-    margin: 0 0 10px;
-  }
-
-  &__error {
-    width: 100%;
-    color: #D32F2F;
-    background: #FDECEC;
-    border-radius: 5px;
-    padding: 10px 12px;
-    font-size: 14px;
-    line-height: 1.4;
-    margin: 10px 0 15px;
-  }
-}
-.add-button:disabled {
-  opacity: .6;
-  cursor: default;
+.object-form {
+  max-width: 1100px;
 }
 
-// Полупрозрачный синий оверлей появляется только во время перетаскивания файла
-// над любой точкой страницы. pointer-events: none — чтобы drop доходил до window.
+.photo-section {
+  width: 100%;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line-color);
+}
+
+.photo-section__heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+
+  h3 {
+    margin-top: 6px;
+    color: var(--text-strong);
+    font-size: 1.05rem;
+    font-weight: 650;
+  }
+}
+
+.photo-section__hint {
+  max-width: 760px;
+  margin: 10px 0 22px;
+  color: var(--text-muted);
+  font-size: .875rem;
+  line-height: 1.6;
+}
+
+.photo-workspace {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(220px, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.photo-preview,
+.photo-empty {
+  min-height: 220px;
+  border: 1px solid var(--line-color);
+  border-radius: 14px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+
+.photo-preview {
+  padding: 10px;
+}
+
+.photo-preview__image,
+.processed-photo__image {
+  display: block;
+  width: 100%;
+  max-height: 290px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.photo-preview__meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 2px 2px;
+  color: var(--text-muted);
+  font-size: .8rem;
+}
+
+.photo-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: .84rem;
+  line-height: 1.5;
+
+  strong {
+    color: var(--text-strong);
+    font-size: .95rem;
+  }
+}
+
+.photo-empty__icon,
+.photo-drop-overlay__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  color: var(--primary-color);
+  background: var(--primary-soft);
+  font-size: 1.25rem;
+}
+
+.photo-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.photo-controls__filename {
+  color: var(--text-muted);
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+}
+
+.photo-processing-error {
+  margin-top: 18px;
+}
+
+.processed-photo {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 360px);
+  align-items: start;
+  gap: 24px;
+  margin-top: 26px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line-color);
+
+  h4 {
+    margin-top: 5px;
+    color: var(--text-strong);
+    font-size: .98rem;
+  }
+}
+
+.processed-photo__image {
+  max-height: 280px;
+  border: 1px solid var(--line-color);
+  background: var(--surface-soft);
+}
+
+.visually-hidden-file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  clip: rect(0, 0, 0, 0);
+  overflow: hidden;
+}
+
 .photo-drop-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 1000;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: rgba(13, 71, 161, .55);
-  color: #FFF;
+  color: var(--text-strong);
+  background: rgb(255 255 255 / 92%);
+  border: 2px dashed var(--primary-color);
   pointer-events: none;
+  font-size: 1.1rem;
+  font-weight: 650;
+}
 
-  &__plus {
-    font-size: 140px;
-    font-weight: 200;
-    line-height: 1;
-  }
-
-  &__text {
-    font-size: 18px;
-    font-weight: 600;
+@media (max-width: 680px) {
+  .photo-workspace,
+  .processed-photo {
+    grid-template-columns: 1fr;
   }
 }
 </style>
