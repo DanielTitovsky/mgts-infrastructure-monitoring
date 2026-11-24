@@ -18,7 +18,7 @@ services:
     environment:
       PGPASSWORD: local-preview-only
     volumes:
-      - ./scripts/preview-schema.sql:/schema.sql:ro
+      - ./migrations.sql:/schema.sql:ro
     command: [psql, -h, db, -U, preview, -d, mgts, -v, ON_ERROR_STOP=1, -f, /schema.sql]
     depends_on:
       db:

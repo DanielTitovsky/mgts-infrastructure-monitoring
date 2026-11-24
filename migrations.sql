@@ -1,13 +1,9 @@
 -- init.sql
 BEGIN;
 
--- Сносим в обратном порядке зависимостей
-DROP TABLE IF EXISTS infrastructure_objects CASCADE;
-DROP TABLE IF EXISTS statuses CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
 
 -- users
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
     id          SERIAL PRIMARY KEY,
     email       VARCHAR(255) NOT NULL UNIQUE,
     phone       VARCHAR(50),
@@ -18,14 +14,14 @@ CREATE TABLE users (
 );
 
 -- statuses
-CREATE TABLE statuses (
+CREATE TABLE IF NOT EXISTS statuses (
     id          SERIAL PRIMARY KEY,
     type        VARCHAR(100) NOT NULL,
     description TEXT
 );
 
 -- infrastructure_objects
-CREATE TABLE infrastructure_objects (
+CREATE TABLE IF NOT EXISTS infrastructure_objects (
     id          SERIAL PRIMARY KEY,
     "imgUrl"    TEXT,
     type        VARCHAR(100),

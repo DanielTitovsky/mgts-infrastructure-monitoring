@@ -12,3 +12,12 @@ assert s["frontend"]["ports"][0]["host_ip"]=="127.0.0.1"
 assert s["backend"]["environment"]["S3_ENDPOINT"]=="http://minio:9000"
 assert all("container_name" not in v for v in s.values())
 print("preview configuration: PASS")'
+uv run python - <<'PY'
+from pathlib import Path
+assert not Path('scripts/preview-schema.sql').exists(), 'duplicate schema must be removed'
+sql=Path('migrations.sql').read_text()
+assert 'DROP TABLE' not in sql.upper(), 'startup must not delete existing tables'
+assert sql.count('CREATE TABLE IF NOT EXISTS') == 3
+assert './migrations.sql:/schema.sql:ro' in Path('compose.preview.yml').read_text()
+print('canonical schema ownership: PASS')
+PY
