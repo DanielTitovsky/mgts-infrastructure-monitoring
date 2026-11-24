@@ -9,7 +9,9 @@ Credentials are supplied through MGTS_SMOKE_USERNAME/MGTS_SMOKE_PASSWORD.
 Optional gateway credentials use MGTS_GATEWAY_USERNAME/MGTS_GATEWAY_PASSWORD.
 """
 import argparse
+import base64
 import os
+import re
 from urllib.parse import urlparse
 
 from playwright.sync_api import expect, sync_playwright
@@ -57,6 +59,22 @@ def main():
                 page.wait_for_url("**/admin/" + path)
                 expect(page.get_by_role("heading", name=label, exact=True)).to_be_visible()
                 print("PASS navigation", path)
+            page.get_by_role("link", name="Добавить объект", exact=True).click()
+            page.wait_for_url("**/admin/objects/action")
+            expect(page.get_by_label("Тип объекта", exact=True)).to_be_visible()
+            page.get_by_label("Тип объекта", exact=True).fill("smoke-not-saved")
+            photo = page.get_by_label("Выберите фото объекта", exact=True)
+            photo.set_input_files({"name": "invalid.txt", "mimeType": "text/plain", "buffer": b"not an image"})
+            expect(page.get_by_text("Допустимы только изображения JPEG, PNG и WebP.").first).to_be_visible()
+            # Synthetic one-pixel fixture: validate DOM/loading, never interpret pixels.
+            photo.set_input_files({"name": "smoke.png", "mimeType": "image/png", "buffer": base64.b64decode(
+                "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1sAAAAASUVORK5CYII="
+            )})
+            expect(page.get_by_text("Предпросмотр выбранного файла", exact=True)).to_be_visible()
+            expect(page.get_by_role("img", name="Фото объекта", exact=True)).to_have_attribute("src", re.compile(r"^blob:"))
+            page.get_by_role("button", name="Удалить фото", exact=True).click()
+            expect(page.get_by_text("Фото не загружено", exact=True)).to_be_visible()
+            print("PASS create form, photo validation/preview/removal (not saved)")
             page.get_by_role("button", name="Выйти", exact=True).click()
             page.wait_for_url("**/admin")
             expect(page.get_by_label("Имя пользователя", exact=True)).to_be_visible()
