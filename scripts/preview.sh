@@ -10,6 +10,7 @@ compose=(docker compose -p "${MGTS_PREVIEW_PROJECT:-mgts-preview}" -f compose.pr
 case "$cmd" in
  up)
    "${compose[@]}" up --build --detach --wait --wait-timeout 300
+   "${compose[@]}" exec -T backend python seed.py
    "${compose[@]}" ps
    printf 'Ready: http://127.0.0.1:%s/ (isolated preview; real API; worker disabled)\n' "${MGTS_PREVIEW_PORT:-3300}"
    ;;

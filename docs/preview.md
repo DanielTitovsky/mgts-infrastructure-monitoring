@@ -21,7 +21,7 @@ photos and uploads; it never removes volumes. For another isolated instance use
 both `MGTS_PREVIEW_PROJECT=mgts-preview-2` and `MGTS_PREVIEW_PORT=3301` consistently.
 Readiness means HTTP services are running, not trained-model quality.
 
-The preview uses the real API, not mock data. The database starts empty. YOLO
+The preview uses the real API, not mock data. The existing idempotent seed populates synthetic demo records; login: `admin` / `admin123` (preview only). These are not ML evaluation results. YOLO
 worker is deliberately not started: model provisioning and ML workbench are
 separate workflows in the ML Draft PR (`cv/data_pipeline/README.md`). Uploaded
 objects will not receive automatic inference until a worker is configured.
