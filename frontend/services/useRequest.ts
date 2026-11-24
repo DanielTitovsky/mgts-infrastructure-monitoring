@@ -1,6 +1,6 @@
-import config from '~/config'
 import { useNotifications } from '~/composables/useNotifications'
 import { mockRequest } from '~/services/mockApi'
+import { isDemoModeEnabled } from '~/services/demoMode'
 
 type RequestBody = Record<string, unknown> | string | FormData
 
@@ -53,7 +53,9 @@ export function useRequest(url: string, options: Options = {}) {
     }
   }
 
-  if (config.useMocks) {
+  // Explicit demo mode must never attempt a backend call; production remains
+  // on the existing authenticated FastAPI request path by default.
+  if (isDemoModeEnabled(useRuntimeConfig().public.demoMode)) {
     return mockRequest(url, options).then((result) => {
       notifyResult(result)
       return result

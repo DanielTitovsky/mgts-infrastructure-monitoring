@@ -1,25 +1,27 @@
 <script setup lang="ts">
 definePageMeta({
   name: 'map',
-  layout: 'admin'
+  layout: 'admin',
 })
 </script>
 
 <template>
-  <div class="all-table">
-    <h1 class="title">Карта</h1>
-    <p class="map-placeholder">
-      Раздел карты будет подключён после выбора провайдера подложки (Leaflet или Яндекс.Карты).
-      На карте отображаются результаты с доступной локацией, а записи без координат остаются в таблице.
-    </p>
-  </div>
-</template>
+  <section class="page-panel map-placeholder">
+    <div class="page-heading">
+      <div>
+        <p class="page-heading__eyebrow">РАСПОЛОЖЕНИЕ</p>
+        <h2 class="page-heading__title">Карта</h2>
+      </div>
+    </div>
 
-<style scoped>
-.map-placeholder {
-  color: #565656;
-  font-size: 14px;
-  max-width: 640px;
-  line-height: 1.5;
-}
-</style>
+    <div class="map-placeholder__body">
+      <span class="map-placeholder__icon" aria-hidden="true"><i class="pi pi-map" /></span>
+      <h3>Карта пока не подключена</h3>
+      <p>
+        Провайдер картографической подложки ещё не выбран. Записи с доступными координатами
+        остаются в списках объектов и дефектов; здесь не отображаются вымышленные точки.
+      </p>
+      <Button label="Открыть список дефектов" icon="pi pi-arrow-right" icon-pos="right" as="router-link" to="/admin/findings" />
+    </div>
+  </section>
+</template>
