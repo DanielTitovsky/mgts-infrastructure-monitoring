@@ -10,3 +10,11 @@ TLS with pinned CA and SNI. Do not install conflicting ingress on the current
 host or modify unrelated Caddy services. All passwords stay canonical; hostname
 and environment-specific overrides remain declarative. A created resource is
 not deployment proof.
+
+The hosted gateway must retain HTTP Basic authentication for every path while
+the backend continues to require JWT authorization. Browser requests use the
+declarative public `apiTokenHeader` (default `Authorization`, hosted override
+`X-MGTS-Authorization`); after Basic authentication Caddy maps that header to
+backend `Authorization` and strips the transport header. SSR continues to send
+`Authorization` directly to the internal API. Do not add an unauthenticated
+gateway/API bypass or default admin credentials.

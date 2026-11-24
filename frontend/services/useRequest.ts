@@ -64,10 +64,10 @@ export function useRequest(url: string, options: Options = {}) {
 
   // На сервере относительный URL некуда резолвить: Nitro не проксирует
   // внутренние вызовы $fetch. Идём в backend напрямую.
+  const runtimeConfig = useRuntimeConfig()
   let requestUrl = url
 
   if (import.meta.server) {
-    const runtimeConfig = useRuntimeConfig()
     const apiTarget = String(runtimeConfig.apiTarget || '').replace(/\/+$/, '')
 
     if (apiTarget) {
@@ -113,7 +113,10 @@ export function useRequest(url: string, options: Options = {}) {
   }
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`
+    const apiTokenHeader = import.meta.client
+      ? String(runtimeConfig.public.apiTokenHeader || 'Authorization')
+      : 'Authorization'
+    headers[apiTokenHeader] = `Bearer ${token}`
   }
 
   return $fetch(requestUrl, {

@@ -21,6 +21,8 @@ services:
       AUTH_REQUIRED: 'true'
   frontend:
     extends: {file: compose.preview.yml, service: frontend}
+    environment:
+      NUXT_PUBLIC_API_TOKEN_HEADER: X-MGTS-Authorization
     ports: !reset []
   gateway:
     image: caddy:2.10.2-alpine
@@ -44,7 +46,10 @@ configs:
         basic_auth {
           preview {$$PREVIEW_PASSWORD_HASH}
         }
-        reverse_proxy frontend:3000
+        reverse_proxy frontend:3000 {
+          header_up Authorization {http.request.header.X-MGTS-Authorization}
+          header_up -X-MGTS-Authorization
+        }
       }
 volumes:
   db:
