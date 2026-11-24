@@ -10,7 +10,3 @@ definePageMeta({
 <template>
   <objects-table/>
 </template>
-
-<style scoped>
-
-</style>

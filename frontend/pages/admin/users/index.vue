@@ -10,7 +10,3 @@ definePageMeta({
 <template>
   <users-table/>
 </template>
-
-<style scoped>
-
-</style>

@@ -18,16 +18,9 @@ if (request.error) {
 </script>
 
 <template>
-  <section class="page-panel">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">РЕЗУЛЬТАТЫ ОБРАБОТКИ</p>
-        <h2 class="page-heading__title">Дефекты</h2>
-      </div>
-      <span class="page-heading__count">{{ findings.length }} записей</span>
-    </div>
+  <section class="card">
 
-    <Message v-if="loadError" severity="error" :closable="false" class="table-message">{{ loadError }}</Message>
+    <Message v-if="loadError" severity="error" :closable="false" class="mb-4">{{ loadError }}</Message>
     <DataTable
       :value="findings"
       data-key="finding_id"
@@ -38,8 +31,16 @@ if (request.error) {
       striped-rows
       scrollable
       table-style="min-width: 69rem"
-      class="data-table"
     >
+      <template #header>
+        <div class="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Результаты обработки</p>
+            <h2 class="m-0 text-xl font-semibold">Дефекты</h2>
+          </div>
+          <span class="text-sm text-muted-color">{{ findings.length }} записей</span>
+        </div>
+      </template>
       <Column field="finding_id" header="ID" sortable>
         <template #body="{ data }">{{ data.finding_id || data.id || '—' }}</template>
       </Column>
@@ -55,7 +56,7 @@ if (request.error) {
       <Column field="severity" header="Критичность" sortable>
         <template #body="{ data }">
           <Tag v-if="data.severity" :value="data.severity" :severity="data.severity === 'high' ? 'danger' : data.severity === 'medium' ? 'warn' : 'secondary'" />
-          <span v-else class="muted-value">Не указана</span>
+          <span v-else class="text-sm text-muted-color">Не указана</span>
         </template>
       </Column>
       <Column field="recommended_action" header="Рекомендованное действие" sortable>
@@ -78,8 +79,8 @@ if (request.error) {
         </template>
       </Column>
       <template #empty>
-        <div class="table-empty">
-          <i class="pi pi-inbox" aria-hidden="true" />
+        <div class="flex flex-col items-center justify-center gap-2 py-8 text-muted-color">
+          <i class="pi pi-inbox text-2xl" aria-hidden="true" />
           <span>{{ loadError ? 'Список временно недоступен' : 'Дефекты не найдены' }}</span>
         </div>
       </template>

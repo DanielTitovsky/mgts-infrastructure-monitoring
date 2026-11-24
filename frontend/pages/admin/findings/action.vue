@@ -55,40 +55,46 @@ onMounted(() => {
 </script>
 
 <template>
-  <form class="page-panel entity-form entity-form--narrow" @submit.prevent="sendData">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">РЕЗУЛЬТАТЫ ОБРАБОТКИ</p>
-        <h2 class="page-heading__title">{{ isUpdateMode ? `Редактирование дефекта №${fields.id || id}` : 'Добавить дефект' }}</h2>
-      </div>
-      <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/findings" />
-    </div>
+  <form class="card flex flex-col gap-6 max-w-3xl" @submit.prevent="sendData">
+    <Toolbar>
+      <template #start>
+        <div>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Результаты обработки</p>
+          <h2 class="text-2xl font-semibold m-0">{{ isUpdateMode ? `Редактирование дефекта №${fields.id || id}` : 'Добавить дефект' }}</h2>
+        </div>
+      </template>
+      <template #end>
+        <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/findings" />
+      </template>
+    </Toolbar>
 
     <Message v-if="loading" severity="info" :closable="false">Загрузка данных дефекта…</Message>
     <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
 
-    <div class="form-field">
-      <label for="finding-detection">ID наблюдения</label>
-      <InputText id="finding-detection" v-model="fields.detection_id" required class="form-control" />
-    </div>
-    <div class="form-field">
-      <label for="finding-type">Признак</label>
-      <InputText id="finding-type" v-model="fields.defect_type" required class="form-control" />
-    </div>
-    <div class="form-field">
-      <label for="finding-confidence">Уверенность</label>
-      <InputText id="finding-confidence" v-model="fields.defect_confidence" inputmode="decimal" class="form-control" />
-    </div>
-    <div class="form-field">
-      <label for="finding-severity">Критичность</label>
-      <InputText id="finding-severity" v-model="fields.severity" class="form-control" />
-    </div>
-    <div class="form-field">
-      <label for="finding-action">Рекомендованное действие</label>
-      <InputText id="finding-action" v-model="fields.recommended_action" class="form-control" />
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2">
+        <label for="finding-detection">ID наблюдения</label>
+        <InputText id="finding-detection" v-model="fields.detection_id" required class="w-full" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="finding-type">Признак</label>
+        <InputText id="finding-type" v-model="fields.defect_type" required class="w-full" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="finding-confidence">Уверенность</label>
+        <InputText id="finding-confidence" v-model="fields.defect_confidence" inputmode="decimal" class="w-full" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="finding-severity">Критичность</label>
+        <InputText id="finding-severity" v-model="fields.severity" class="w-full" />
+      </div>
+      <div class="flex flex-col gap-2">
+        <label for="finding-action">Рекомендованное действие</label>
+        <InputText id="finding-action" v-model="fields.recommended_action" class="w-full" />
+      </div>
     </div>
 
-    <div class="entity-form__actions">
+    <div class="flex justify-end border-t border-surface-200 dark:border-surface-700 pt-4">
       <Button type="submit" :label="saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить изменения' : 'Создать дефект')" icon="pi pi-check" :loading="saving" :disabled="loading" />
     </div>
   </form>

@@ -10,7 +10,3 @@ definePageMeta({
 <template>
   <findings-table/>
 </template>
-
-<style scoped>
-
-</style>

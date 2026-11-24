@@ -342,40 +342,44 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <form class="page-panel entity-form object-form" @submit.prevent="sendData">
-    <div class="page-heading">
-      <div>
-        <p class="page-heading__eyebrow">РЕЕСТР ИНФРАСТРУКТУРЫ</p>
-        <h2 class="page-heading__title">{{ isUpdateMode ? `Объект №${fields.id || id}` : 'Добавить объект' }}</h2>
-      </div>
-      <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/objects" />
-    </div>
+  <form class="card flex flex-col gap-6" @submit.prevent="sendData">
+    <Toolbar>
+      <template #start>
+        <div>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Реестр инфраструктуры</p>
+          <h2 class="text-2xl font-semibold m-0">{{ isUpdateMode ? `Объект №${fields.id || id}` : 'Добавить объект' }}</h2>
+        </div>
+      </template>
+      <template #end>
+        <Button label="К списку" icon="pi pi-arrow-left" severity="secondary" outlined as="router-link" to="/admin/objects" />
+      </template>
+    </Toolbar>
 
     <Message v-if="loading" severity="info" :closable="false">Загрузка данных объекта…</Message>
     <Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
 
-    <div class="entity-form__grid">
-      <div class="form-field">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div class="flex flex-col gap-2">
         <label for="object-type">Тип объекта</label>
-        <InputText id="object-type" v-model="fields.type" required class="form-control" />
+        <InputText id="object-type" v-model="fields.type" required class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="object-external-id">Внешний идентификатор</label>
-        <InputText id="object-external-id" v-model="fields.external_id" class="form-control" />
+        <InputText id="object-external-id" v-model="fields.external_id" class="w-full" />
       </div>
-      <div class="form-field entity-form__wide">
+      <div class="flex flex-col gap-2 md:col-span-2">
         <label for="object-place">Место</label>
-        <InputText id="object-place" v-model="fields.place" class="form-control" />
+        <InputText id="object-place" v-model="fields.place" class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="object-lat">Широта</label>
-        <InputText id="object-lat" v-model="fields.lat" inputmode="decimal" class="form-control" />
+        <InputText id="object-lat" v-model="fields.lat" inputmode="decimal" class="w-full" />
       </div>
-      <div class="form-field">
+      <div class="flex flex-col gap-2">
         <label for="object-lon">Долгота</label>
-        <InputText id="object-lon" v-model="fields.lon" inputmode="decimal" class="form-control" />
+        <InputText id="object-lon" v-model="fields.lon" inputmode="decimal" class="w-full" />
       </div>
-      <div class="form-field entity-form__wide">
+      <div class="flex flex-col gap-2 md:col-span-2">
         <label for="object-status">Статус</label>
         <Select
           v-if="statuses.length"
@@ -385,40 +389,40 @@ onBeforeUnmount(() => {
           option-label="label"
           option-value="value"
           placeholder="Выберите статус"
-          class="form-control"
+          class="w-full"
         />
-        <InputText v-else id="object-status" v-model="fields.status_id" placeholder="ID статуса" class="form-control" />
+        <InputText v-else id="object-status" v-model="fields.status_id" placeholder="ID статуса" class="w-full" />
       </div>
     </div>
 
-    <section class="photo-section" aria-labelledby="object-photo-heading">
-      <div class="photo-section__heading">
+    <section class="flex flex-col gap-4 border-t border-surface-200 dark:border-surface-700 pt-6" aria-labelledby="object-photo-heading">
+      <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p class="page-heading__eyebrow">ИЗОБРАЖЕНИЕ</p>
-          <h3 id="object-photo-heading">Фото объекта</h3>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Изображение</p>
+          <h3 id="object-photo-heading" class="text-xl font-semibold m-0">Фото объекта</h3>
         </div>
         <Tag v-if="processingLabel" :value="processingLabel" :severity="fields.processing_status === 'failed' ? 'danger' : fields.processing_status === 'done' ? 'success' : 'warn'" />
       </div>
-      <p class="photo-section__hint">
+      <p class="text-sm text-muted-color max-w-prose m-0">
         JPEG, PNG или WebP, не больше 5 МБ. Одно фото на объект — новое заменит предыдущее.
         Файл можно перетащить в любое место страницы.
       </p>
 
-      <div class="photo-workspace">
-        <div v-if="previewUrl" class="photo-preview">
-          <Image :src="previewUrl" alt="Фото объекта" image-class="photo-preview__image" preview />
-          <div class="photo-preview__meta">
+      <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(14rem,22.5rem)_minmax(0,1fr)]">
+        <div v-if="previewUrl" class="flex flex-col gap-3 rounded-lg border border-surface-200 dark:border-surface-700 p-4">
+          <Image :src="previewUrl" alt="Фото объекта" image-class="w-full max-h-72 object-contain rounded-lg" preview />
+          <div class="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-color">
             <span>{{ photoFile ? 'Предпросмотр выбранного файла' : 'Текущее фото объекта' }}</span>
             <Tag v-if="photoRemoved" value="Будет удалено после сохранения" severity="warn" />
           </div>
         </div>
-        <div v-else class="photo-empty">
-          <span class="photo-empty__icon" aria-hidden="true"><i class="pi pi-image" /></span>
-          <strong>Фото не загружено</strong>
+        <div v-else class="flex min-h-56 flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-surface-300 dark:border-surface-600 p-6 text-center text-sm text-muted-color">
+          <i class="pi pi-image text-2xl text-primary" aria-hidden="true" />
+          <strong class="font-semibold text-color">Фото не загружено</strong>
           <span>Добавьте изображение, чтобы оно было связано с объектом.</span>
         </div>
 
-        <div class="photo-controls">
+        <div class="flex flex-col items-start gap-3">
           <Button
             :label="previewUrl ? 'Выбрать другое фото' : 'Прикрепить фото'"
             :icon="previewUrl ? 'pi pi-refresh' : 'pi pi-upload'"
@@ -447,217 +451,40 @@ onBeforeUnmount(() => {
           <input
             id="object-photo"
             ref="photoInput"
-            class="visually-hidden-file-input"
+            class="sr-only"
             type="file"
             accept="image/jpeg,image/png,image/webp"
             aria-label="Выберите фото объекта"
             @change="onPhotoSelected"
           />
-          <span v-if="photoFile" class="photo-controls__filename">Выбрано: {{ photoFile.name }}</span>
+          <span v-if="photoFile" class="break-all text-sm text-muted-color">Выбрано: {{ photoFile.name }}</span>
         </div>
       </div>
 
-      <Message v-if="processingError" severity="error" :closable="false" class="photo-processing-error">
+      <Message v-if="processingError" severity="error" :closable="false">
         Ошибка обработки: {{ processingError }}
       </Message>
 
-      <div v-if="processedPhotoUrl" class="processed-photo">
+      <div v-if="processedPhotoUrl" class="grid grid-cols-1 items-start gap-6 border-t border-surface-200 dark:border-surface-700 pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(14rem,22.5rem)]">
         <div>
-          <p class="page-heading__eyebrow">РЕЗУЛЬТАТ ОБРАБОТКИ</p>
-          <h4>Аннотированное изображение</h4>
+          <p class="text-muted-color text-xs font-semibold uppercase tracking-wide m-0">Результат обработки</p>
+          <h4 class="text-lg font-semibold m-0">Аннотированное изображение</h4>
         </div>
         <a :href="processedPhotoUrl" target="_blank" rel="noopener noreferrer" aria-label="Открыть аннотированное изображение">
-          <Image :src="processedPhotoUrl" alt="Аннотированное изображение объекта" image-class="processed-photo__image" preview />
+          <Image :src="processedPhotoUrl" alt="Аннотированное изображение объекта" image-class="w-full max-h-72 object-contain rounded-lg border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900" preview />
         </a>
       </div>
     </section>
 
-    <div class="entity-form__actions">
+    <div class="flex justify-end border-t border-surface-200 dark:border-surface-700 pt-4">
       <Button type="submit" :label="saving ? 'Сохранение…' : (isUpdateMode ? 'Сохранить изменения' : 'Создать объект')" icon="pi pi-check" :loading="saving" :disabled="loading" />
     </div>
   </form>
 
   <Teleport to="body">
-    <div v-if="isDragging" class="photo-drop-overlay" role="status">
-      <span class="photo-drop-overlay__icon" aria-hidden="true"><i class="pi pi-cloud-upload" /></span>
+    <div v-if="isDragging" class="fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-4 border-2 border-dashed border-primary bg-surface-0/90 dark:bg-surface-950/90 text-color pointer-events-none text-lg font-semibold" role="status">
+      <i class="pi pi-cloud-upload text-3xl text-primary" aria-hidden="true" />
       <span>Отпустите изображение, чтобы прикрепить фото</span>
     </div>
   </Teleport>
 </template>
-
-<style scoped lang="scss">
-.object-form {
-  max-width: 1100px;
-}
-
-.photo-section {
-  width: 100%;
-  margin-top: 32px;
-  padding-top: 28px;
-  border-top: 1px solid var(--line-color);
-}
-
-.photo-section__heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-
-  h3 {
-    margin-top: 6px;
-    color: var(--text-strong);
-    font-size: 1.05rem;
-    font-weight: 650;
-  }
-}
-
-.photo-section__hint {
-  max-width: 760px;
-  margin: 10px 0 22px;
-  color: var(--text-muted);
-  font-size: .875rem;
-  line-height: 1.6;
-}
-
-.photo-workspace {
-  display: grid;
-  grid-template-columns: minmax(220px, 360px) minmax(220px, 1fr);
-  align-items: start;
-  gap: 24px;
-}
-
-.photo-preview,
-.photo-empty {
-  min-height: 220px;
-  border: 1px solid var(--line-color);
-  border-radius: 14px;
-  background: var(--surface-soft);
-  overflow: hidden;
-}
-
-.photo-preview {
-  padding: 10px;
-}
-
-.photo-preview__image,
-.processed-photo__image {
-  display: block;
-  width: 100%;
-  max-height: 290px;
-  object-fit: contain;
-  border-radius: 8px;
-}
-
-.photo-preview__meta {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 2px 2px;
-  color: var(--text-muted);
-  font-size: .8rem;
-}
-
-.photo-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: .84rem;
-  line-height: 1.5;
-
-  strong {
-    color: var(--text-strong);
-    font-size: .95rem;
-  }
-}
-
-.photo-empty__icon,
-.photo-drop-overlay__icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  color: var(--primary-color);
-  background: var(--primary-soft);
-  font-size: 1.25rem;
-}
-
-.photo-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-
-.photo-controls__filename {
-  color: var(--text-muted);
-  font-size: .82rem;
-  overflow-wrap: anywhere;
-}
-
-.photo-processing-error {
-  margin-top: 18px;
-}
-
-.processed-photo {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(220px, 360px);
-  align-items: start;
-  gap: 24px;
-  margin-top: 26px;
-  padding-top: 24px;
-  border-top: 1px solid var(--line-color);
-
-  h4 {
-    margin-top: 5px;
-    color: var(--text-strong);
-    font-size: .98rem;
-  }
-}
-
-.processed-photo__image {
-  max-height: 280px;
-  border: 1px solid var(--line-color);
-  background: var(--surface-soft);
-}
-
-.visually-hidden-file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  clip: rect(0, 0, 0, 0);
-  overflow: hidden;
-}
-
-.photo-drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  color: var(--text-strong);
-  background: rgb(255 255 255 / 92%);
-  border: 2px dashed var(--primary-color);
-  pointer-events: none;
-  font-size: 1.1rem;
-  font-weight: 650;
-}
-
-@media (max-width: 680px) {
-  .photo-workspace,
-  .processed-photo {
-    grid-template-columns: 1fr;
-  }
-}
-</style>
