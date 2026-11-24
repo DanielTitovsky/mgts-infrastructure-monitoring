@@ -15,7 +15,6 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password
-from app.db.bootstrap import bootstrap_schema
 from app.db.session import SessionLocal, dispose_engine
 from app.models import Defect, InfrastructureObject, Status, User
 
@@ -130,8 +129,6 @@ async def _get_or_create(
 
 
 async def seed() -> None:
-    await bootstrap_schema()
-
     async with SessionLocal() as session:
         for data in DEMO_STATUSES:
             await _get_or_create(

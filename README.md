@@ -85,3 +85,14 @@ mgts-infrastructure-monitoring/
 ```
 
 Подробности по API — в [backend/README.md](https://github.com).
+
+## Схема БД и конфигурация
+
+Backend владеет версионированной схемой: `backend/migrations/` и
+`backend/alembic.ini`. `docker compose run --rm migrate` применяет миграции;
+API и воркер зависят от успешного завершения этого шага и сами DDL не выполняют.
+Демо-данные добавляются отдельно: `docker compose exec backend python seed.py`.
+
+Настройки frontend для разработчиков: `frontend/config.ts`; Nuxt использует
+их как defaults, окружение переопределяет параметры конкретного запуска.
+Для preview: [локальный запуск](docs/preview.md), [Dokploy](docs/dokploy.md).

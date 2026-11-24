@@ -24,7 +24,7 @@ class InfrastructureObject(Base):
     )
     place: Mapped[str | None] = mapped_column(Text)
 
-    # Добавлены backend/sql/schema.sql.
+    # Добавлены миграцией Alembic 20261124_0001.
     external_id: Mapped[str | None] = mapped_column(String(100))
     lat: Mapped[float | None] = mapped_column(Float)
     lon: Mapped[float | None] = mapped_column(Float)

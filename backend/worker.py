@@ -45,7 +45,6 @@ from app.core.processing import (
     STATUS_PROCESSING,
     remove_processed_image,
 )
-from app.db.bootstrap import bootstrap_schema
 from app.db.session import SessionLocal, dispose_engine
 from app.models import Defect, InfrastructureObject as Obj, Status
 from app.models.infrastructure_object import PHOTO_KEY_PREFIX
@@ -366,9 +365,6 @@ async def run_worker() -> None:
         sys.exit(1)
 
     processed_dir().mkdir(parents=True, exist_ok=True)
-
-    if settings.db_bootstrap:
-        await bootstrap_schema()
 
     logger.info("Загружаю модель YOLO из %s...", weights)
     model = await asyncio.to_thread(YOLO, str(weights))

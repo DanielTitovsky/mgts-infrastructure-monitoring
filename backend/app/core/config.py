@@ -32,8 +32,6 @@ class Settings(BaseSettings):
     db_password: str = "postgres"
     db_name: str = "mtgsHack"
     db_echo: bool = False
-    # Применять backend/sql/schema.sql при старте приложения.
-    db_bootstrap: bool = True
 
     # --- Авторизация ---
     jwt_secret: str = "dev-secret-change-me-0123456789abcdef"
