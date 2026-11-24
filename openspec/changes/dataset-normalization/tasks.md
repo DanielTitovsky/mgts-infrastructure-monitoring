@@ -1,0 +1,12 @@
+- [x] Inspect repository and establish isolated task worktree.
+- [x] Implement CLI and six source adapters with unit/integration/CLI tests.
+- [x] Record source-specific class mappings, format and risk policies.
+- [x] Run focused tests: 61 passed, 84.56% coverage.
+- [x] Verify real fresh-root Broken Poles fetch and no-token cache reuse.
+- [x] Normalize/validate real Broken Poles: 533 images, 745 boxes, 71 rejected records; train-only, not evaluation-ready.
+- [x] Document commands and limitations including known Powerline duplicate-label blocker.
+- [x] Correct fresh-machine ZIP fetching and Parquet class-name provenance.
+- [x] Correct portable YAML root resolution with regression test (red then green).
+- [x] Resolve publishing preference: local only, no push/PR.
+- [x] Complete final PD-Defect smoke: 1,801 images / 2,182 annotations, valid=true; record evidence.
+- [x] Prepare verified focused local commit; no push/PR.
