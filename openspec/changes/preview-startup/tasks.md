@@ -16,5 +16,9 @@ Historical intermediate correction (superseded by backend Alembic below): migrat
 - [ ] Verify fresh, existing and repeat migration data preservation and migration failure gates.
 - [ ] Publish correction, verify PR identity/head and restart existing preview without deleting data.
 - [ ] Deploy separate MGTS preview through Dokploy from canonical PR branch; provision external HTTPS route and protect access; verify outside localhost. Do not replace unrelated services.
+- [x] Preserve gateway Basic authentication on every hosted path while forwarding browser JWTs through configurable `X-MGTS-Authorization`; restore backend `Authorization`, strip the transport header, and keep SSR on standard `Authorization`. Add focused frontend/Compose checks and validate Caddy syntax/order; do not add public bypasses or default admin credentials.
 
-Alembic verification: 6 semantic/source tests; offline DDL emission; live PostgreSQL fresh + legacy-base + repeated upgrade passed, sentinel user preserved. Old SQL parity proven against commit 05a644f before removal. Current populated preview migration/restart and external hosted routing still pending.
+Alembic verification: 6 semantic/source tests; offline DDL emission; live PostgreSQL fresh + legacy-base + repeated upgrade passed, sentinel user preserved. Old SQL parity proven against commit 05a644f before removal. Populated local preview was restarted through scripts/preview.sh up: all five objects survived, alembic_version is 20261124_0001, backend/frontend healthy and /admin HTTP 200. External hosted routing and migration-failure runtime gate remain pending.
+
+- [x] Verify Dokploy Compose placement by exact serverId/IP: build and runtime on 2.56.97.211, never build on production 159.195.51.237.
+- [ ] Resolve false-positive compound-command push guard before publishing; do not bypass by command spelling.
