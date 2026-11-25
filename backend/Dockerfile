@@ -10,8 +10,6 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY migrations ./migrations
-COPY alembic.ini ./alembic.ini
 COPY main.py seed.py ./
 
 RUN useradd --create-home --uid 1000 appuser \

@@ -37,6 +37,7 @@ responses. Browser automation crashed before interactions, so click-through
 verification remains pending. The production Nitro build is not verified;
 this preview uses the existing Nuxt development Docker entrypoint.
 
-Schema ownership: `backend/migrations/` (Alembic). Compose waits for the one-shot
-`migrate` service to succeed before API/worker. No schema SQL lives in the root or
-launcher scripts. API, worker and seed do not apply migrations.
+Schema ownership: `backend/sql/schema.sql`. Compose waits for the one-shot
+`schema-init` psql service to succeed before API/worker. API, worker and seed do
+not apply DDL. The initializer uses `ON_ERROR_STOP` and one transaction; it is
+safe to repeat and does not touch a legacy `alembic_version` table.

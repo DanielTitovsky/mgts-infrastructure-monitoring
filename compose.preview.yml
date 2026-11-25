@@ -13,15 +13,17 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
-  migrate:
-    build: ./backend
-    command: [alembic, upgrade, head]
+  schema-init:
+    image: postgres:15-alpine
+    command: [psql, -v, ON_ERROR_STOP=1, '-1', -f, /schema/schema.sql]
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
-      DB_USER: preview
-      DB_PASSWORD: local-preview-only
-      DB_NAME: mgts
+      PGHOST: db
+      PGPORT: '5432'
+      PGUSER: preview
+      PGPASSWORD: local-preview-only
+      PGDATABASE: mgts
+    volumes:
+      - ./backend/sql/schema.sql:/schema/schema.sql:ro
     depends_on:
       db:
         condition: service_healthy
@@ -55,7 +57,7 @@ services:
         condition: service_healthy
       minio:
         condition: service_started
-      migrate:
+      schema-init:
         condition: service_completed_successfully
     restart: on-failure:5
     healthcheck:

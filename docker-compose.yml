@@ -20,15 +20,17 @@ services:
       retries: 20
       start_period: 5s
 
-  migrate:
-    build:
-      context: ./backend
-    command: [alembic, upgrade, head]
-    env_file:
-      - .env
+  schema-init:
+    image: postgres:15-alpine
+    command: [psql, -v, ON_ERROR_STOP=1, '-1', -f, /schema/schema.sql]
     environment:
-      DB_HOST: db
-      DB_PORT: 5432
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${DB_USER}
+      PGPASSWORD: ${DB_PASSWORD}
+      PGDATABASE: ${DB_NAME}
+    volumes:
+      - ./backend/sql/schema.sql:/schema/schema.sql:ro
     depends_on:
       db:
         condition: service_healthy
@@ -74,7 +76,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
+      schema-init:
         condition: service_completed_successfully
       minio:
         condition: service_started
@@ -107,7 +109,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migrate:
+      schema-init:
         condition: service_completed_successfully
       minio:
         condition: service_started

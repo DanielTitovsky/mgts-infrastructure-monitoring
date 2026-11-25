@@ -21,7 +21,7 @@ cd "$ROOT_DIR"
 
 ENV_FILE=".env"
 COMPOSE_FILE="docker-compose.yml"
-MIGRATION_FILE="backend/alembic.ini"
+SCHEMA_FILE="backend/sql/schema.sql"
 MODE="${1:-}"
 
 case "$MODE" in
@@ -89,8 +89,8 @@ if [ ! -f "$COMPOSE_FILE" ]; then
     exit 1
 fi
 
-if [ ! -f "$MIGRATION_FILE" ]; then
-    echo "Ошибка: файл миграции $MIGRATION_FILE не найден в $ROOT_DIR." >&2
+if [ ! -f "$SCHEMA_FILE" ]; then
+    echo "Ошибка: файл схемы $SCHEMA_FILE не найден в $ROOT_DIR." >&2
     exit 1
 fi
 
@@ -123,9 +123,8 @@ for i in $(seq 1 60); do
     fi
 done
 
-# Apply backend-owned versioned migrations; never execute a second SQL schema.
-$COMPOSE_CMD build migrate
-$COMPOSE_CMD run --rm migrate
+# Apply the canonical idempotent SQL initializer before API/worker startup.
+$COMPOSE_CMD run --rm schema-init
 
 # --- 7. Только БД? ---
 if [ "$MODE" = "--db-only" ]; then

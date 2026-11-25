@@ -20,8 +20,10 @@ Compose поднимет PostgreSQL, MinIO, API, ИИ-воркер и фронт
 адресу `http://backend:8000` (передаётся через `API_PROXY_TARGET` в
 `docker-compose.yml`).
 
-Compose выполняет `alembic upgrade head` отдельным сервисом после готовности
-PostgreSQL и до запуска API или воркера. Демо-данные автоматически не добавляются.
+Compose запускает одноразовый сервис `schema-init` с `postgres:15-alpine`
+после готовности PostgreSQL и до запуска API или воркера. Он применяет
+`backend/sql/schema.sql` через `psql` в одной транзакции. Демо-данные
+автоматически не добавляются.
 
 Воркер можно запустить/перезапустить отдельно:
 
@@ -35,7 +37,7 @@ docker compose logs -f worker
 ```bash
 # 1. База данных (из корня проекта, один раз)
 bash start-db.sh --db-only
-#    либо: docker compose up -d db, затем применить миграцию из backend (шаг 3)
+#    либо: docker compose up -d db, затем применить схему через Compose (шаг 3)
 
 # 2. Зависимости бэкенда
 cd backend
@@ -43,10 +45,12 @@ py -3 -m venv .venv
 .venv\Scripts\activate            # Linux/macOS: source .venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Создание/обновление схемы БД (из каталога backend)
-alembic upgrade head
+# 3. Создание/обновление схемы БД (из корня проекта)
+cd ..
+docker compose run --rm schema-init
 
 # 4. Демо-данные (необязательно, но удобно для проверки UI)
+cd backend
 python seed.py
 
 # 5. Запуск API
@@ -146,8 +150,7 @@ backend/
 │       ├── deps.py             # get_session, get_current_user, require_auth
 │       ├── router.py           # сборка /api
 │       └── routes/             # auth, users, statuses, objects, defects, health
-├── alembic.ini                 # конфигурация Alembic
-├── migrations/                 # версионируемые миграции Alembic
+├── sql/schema.sql              # идемпотентный источник схемы БД
 ├── seed.py                     # демо-данные
 ├── requirements.txt            # зависимости API
 ├── requirements-worker.txt     # API + PyTorch/Ultralytics/OpenCV для воркера
@@ -161,21 +164,20 @@ backend/
 
 ## Схема БД
 
-Alembic — единственный владелец схемы БД. Версионируемые миграции находятся в
-`backend/migrations`; Compose запускает `alembic upgrade head` отдельным
-одноразовым сервисом до API и воркера. При локальном запуске примените миграции
-из каталога `backend`:
+`backend/sql/schema.sql` — единственный источник схемы. Compose запускает
+одноразовый `postgres:15-alpine` сервис `schema-init` с `psql -1` после
+готовности базы и до API/воркера. При локальном запуске примените схему из
+корня проекта:
 
 ```bash
-cd backend
-alembic upgrade head
+docker compose run --rm schema-init
 ```
 
-Первая миграция идемпотентно создаёт новую схему или принимает существующие
-таблицы и колонки без удаления данных. Дальнейшие изменения схемы оформляются
-новыми миграциями. API, воркер и `seed.py` схему не изменяют; `DB_BOOTSTRAP`
-больше не используется. Демо-данные по-прежнему добавляются отдельно командой
-`python seed.py`.
+Инициализатор идемпотентно создаёт новую схему или дополняет существующие
+legacy-таблицы и колонки без удаления данных; `alembic_version` и её данные,
+если они остались в существующей базе, не затрагиваются. API, воркер и
+`seed.py` схему не изменяют; `DB_BOOTSTRAP` больше не используется.
+Демо-данные по-прежнему добавляются отдельно командой `python seed.py`.
 
 Фото объектов хранятся в MinIO, а в `infrastructure_objects."imgUrl"` лежит
 ключ файла вида `objects/{id}/{uuid}.jpg`. API отдаёт клиенту готовую ссылку
