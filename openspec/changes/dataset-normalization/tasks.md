@@ -27,4 +27,4 @@
 - [x] Deploy authenticated Marimo through Dokploy, prove hosted model inference and password login using HTTP (no browser), then put both demo URLs/access details in both branch READMEs and PR bodies.
 - [x] Switch the Compose-hosted service to authenticated `marimo edit` with a writable named notebook volume; seed the bundled notebook only when absent, retain non-root execution, and test auth/command/persistence.
 - [x] Update operator/user docs to describe the hosted editor, durable notebook volume, and trusted-editor arbitrary-code-execution boundary.
-- [ ] Coordinator: redeploy the exact Compose candidate through Dokploy and verify HTTP authentication/editor mode plus notebook edit persistence across container recreation (no browser/visual inspection).
+- [x] Coordinator: redeploy the exact Compose candidate through Dokploy and verify HTTP authentication/editor mode plus notebook edit persistence across container recreation (no browser/visual inspection).
