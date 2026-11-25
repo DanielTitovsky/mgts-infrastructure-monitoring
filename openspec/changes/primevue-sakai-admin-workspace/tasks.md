@@ -7,7 +7,7 @@
 - [x] Complete a production build (verified after memory recovery; historical failure follows). The client and SSR bundles compiled, but the host `earlyoom` daemon sent SIGTERM to the Nitro Node process during generation when available memory fell below its 12% threshold with swap full; the earlyoom journal confirms the victim, and no Nuxt/Nitro error or successful build result is claimed. Retry only when host memory is safe.
 - [x] Inspect the final frontend/OpenSpec diff and create one focused candidate commit.
 - [x] Restore developer-owned frontend/config.ts defaults and connect them to Nuxt runtime config; environment overrides must still work.
-- [x] Persist the JWT cookie through browser restarts until its actual expiry (capped at 30 days), with cookie-option regression tests.
+- [x] [HISTORICAL — superseded by the browser HTTP Basic correction below] Persist the JWT cookie through browser restarts until its actual expiry (capped at 30 days), with cookie-option regression tests.
 - [x] Remove browser automation checks per explicit user correction; do not run browser tests. Verify session expiry with unit tests and HTTP/API checks instead.
 
 ## Actual Sakai template adoption (in progress)
@@ -25,9 +25,19 @@ Build remains incomplete: first real build found and fixed legacy site import; n
 ## Memory-recovery verification
 
 - [x] Retry the exact Sakai candidate ecc56918b9b5be143cbe16f63592c8c91781e3a6 after host capacity recovered: `NODE_OPTIONS=--max-old-space-size=1536 npm run build` completed with exit 0, including Nitro. Canonical waiter run: `mgts-sakai-build-recovered-foreground`.
-- [x] Run the built `.output/server/index.mjs` and DOM-only Playwright smoke against the real isolated preview API: login, all five navigation destinations and logout/cookie clearing passed. The skill `with_server.py` managed temporary candidate port 3301 and loopback API relay 3001 to the existing preview API on 3300; both test processes stopped afterward. No mocks, screenshots or published-runtime claims.
+- [x] [HISTORICAL — evidence of the superseded custom-login/JWT-cookie implementation only; not a current auth contract or request to rerun] Run the built `.output/server/index.mjs` and DOM-only Playwright smoke against the real isolated preview API: login, all five navigation destinations and logout/cookie clearing passed. The skill `with_server.py` managed temporary candidate port 3301 and loopback API relay 3001 to the existing preview API on 3300; both test processes stopped afterward. No mocks, screenshots or published-runtime claims.
 - [x] Extend and pass DOM-only form/photo smoke: open create form, fill type, reject non-image file, select synthetic PNG, verify blob preview, remove unsaved photo. No screenshot, image interpretation, upload persistence or ML processing claim. PrimeVue duplicates alt on its wrapper; use the actual img role for a strict locator.
 
 The earlier memory-blocked notes above are historical and superseded by this successful build and navigation proof. Hosted publication remains pending; Dokploy readback still reports no deployments.
 
 Latest correction: prior completed DOM checks above are historical evidence only, not commands to rerun. `scripts/test-browser-smoke.py` was removed; browser checks are no longer part of this task.
+
+## Browser HTTP Basic auth correction (current source/test work complete; no deployment/browser proof)
+
+- [x] Replace the custom frontend login form with a redirect from `/admin` to `/admin/objects`; retain Caddy's standard Basic dialog as the only hosted browser login.
+- [x] Remove frontend JWT-cookie read/write/header machinery, its cookie helper/tests, and the fake logout UI; preserve `frontend/config.ts` and real Bearer API-client support.
+- [x] Make browser requests same-origin and let the browser manage Basic `Authorization`; forward the incoming `Authorization` only from SSR to the configured internal API target.
+- [x] Add FastAPI Basic authentication through the existing user service and preserve Bearer JWT authentication; malformed or invalid Basic credentials must fail as unauthenticated.
+- [x] Keep hosted Caddy Basic protection and original `Authorization` forwarding; remove the obsolete custom public JWT header override without adding credentials to source.
+- [x] Update current auth documentation and superseded auth records; state that browser credential caching is user-agent controlled and has no 30-day guarantee.
+- [x] Add frontend unit and backend HTTP tests using mocked services/session only; run focused tests without containers or browser automation/screenshots. Frontend: `npm test` (17/17); backend: `uv run --with-requirements requirements.txt --with httpx -- python -m unittest discover -s tests -v` (8/8).

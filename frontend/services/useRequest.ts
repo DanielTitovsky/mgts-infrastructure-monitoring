@@ -66,17 +66,14 @@ export function useRequest(url: string, options: Options = {}) {
   // внутренние вызовы $fetch. Идём в backend напрямую.
   const runtimeConfig = useRuntimeConfig()
   let requestUrl = url
+  const apiTarget = String(runtimeConfig.apiTarget || '').replace(/\/+$/, '')
+  const incomingAuthorization = import.meta.server && apiTarget
+    ? useRequestHeaders(['authorization']).authorization
+    : undefined
 
-  if (import.meta.server) {
-    const apiTarget = String(runtimeConfig.apiTarget || '').replace(/\/+$/, '')
-
-    if (apiTarget) {
-      requestUrl = `${apiTarget}${url.replace(/^\/api/, '')}`
-    }
+  if (import.meta.server && apiTarget) {
+    requestUrl = `${apiTarget}${url.replace(/^\/api/, '')}`
   }
-
-  const $token =  useCookie('token')
-  const token = $token.value
 
   const result = {
     success: true,
@@ -112,11 +109,12 @@ export function useRequest(url: string, options: Options = {}) {
     headers['Content-Type'] = 'application/json'
   }
 
-  if (token) {
-    const apiTokenHeader = import.meta.client
-      ? String(runtimeConfig.public.apiTokenHeader || 'Authorization')
-      : 'Authorization'
-    headers[apiTokenHeader] = `Bearer ${token}`
+  const hasAuthorization = Object.keys(headers).some(
+    (name) => name.toLowerCase() === 'authorization'
+  )
+
+  if (import.meta.server && apiTarget && incomingAuthorization && !hasAuthorization) {
+    headers.Authorization = incomingAuthorization
   }
 
   return $fetch(requestUrl, {
@@ -125,6 +123,7 @@ export function useRequest(url: string, options: Options = {}) {
     retry: 0, // https://github.com/nuxt/nuxt/issues/23457
     method: options?.method || 'GET',
     headers,
+    credentials: 'same-origin',
   })
     .then((data) => {
       let parsed = data

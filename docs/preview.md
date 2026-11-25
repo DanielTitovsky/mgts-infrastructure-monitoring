@@ -22,20 +22,22 @@ photos and uploads; it never removes volumes. For another isolated instance use
 both `MGTS_PREVIEW_PROJECT=mgts-preview-2` and `MGTS_PREVIEW_PORT=3301` consistently.
 Readiness means HTTP services are running, not trained-model quality.
 
-The preview uses the real API, not mock data. The explicit `seed` command populates synthetic demo records; login: `admin` / `admin123` (preview only). These are not ML evaluation results. YOLO
+The preview uses the real API, not mock data. The explicit `seed` command populates synthetic demo records; `admin` / `admin123` is a preview-only account for the API's existing login/JWT clients, not a frontend login. The local preview defaults to `AUTH_REQUIRED=false` and the browser app redirects `/admin` to `/admin/objects`. These records are not ML evaluation results. YOLO
 worker is deliberately not started: model provisioning and ML workbench are
 separate workflows in the ML Draft PR (`cv/data_pipeline/README.md`). Uploaded
 objects will not receive automatic inference until a worker is configured.
 No dataset download or training happens during startup.
 
-## Verified candidate preview
+## Historical preview verification (prior candidate; not current auth proof)
 
 The current server preview is forwarded to the laptop at
 http://127.0.0.1:13300/admin (dedicated `mgts-frontend-tunnel` session).
-Login API, six admin routes and five seeded objects returned successful HTTP
-responses. Browser automation crashed before interactions, so click-through
-verification remains pending. The production Nitro build is not verified;
-this preview uses the existing Nuxt development Docker entrypoint.
+The earlier candidate's login API, six admin routes and five seeded objects
+returned successful HTTP responses. This is historical evidence for the prior
+candidate, not verification of current HTTP Basic behavior. Browser automation
+crashed before interactions, so no click-through verification is claimed. The
+production Nitro build is not verified; this preview used the existing Nuxt
+development Docker entrypoint.
 
 Schema ownership: `backend/sql/schema.sql`. Compose waits for the one-shot
 `schema-init` psql service to succeed before API/worker. API, worker and seed do

@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-secret-change-me-0123456789abcdef"
     jwt_algorithm: str = "HS256"
     jwt_expires_minutes: int = 720
-    # Пока фронтенд не перешёл на реальный вход, защиту можно не включать.
+    # Локальный preview может работать без gateway; hosted Compose включает защиту.
     auth_required: bool = False
 
     # --- Файловое хранилище (MinIO / любой S3-совместимый сервис) ---

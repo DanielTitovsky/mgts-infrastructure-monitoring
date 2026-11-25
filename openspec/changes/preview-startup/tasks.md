@@ -17,7 +17,7 @@ Historical intermediate correction (superseded by backend Alembic, then the curr
 - [x] Historical Alembic verification: fresh, existing and repeat data preservation passed; see the evidence below. It is not current startup guidance.
 - [x] Publish correction in PR1, verify remote/PR SHA and commits membership; redeploy without deleting volumes.
 - [ ] Deploy separate MGTS preview through Dokploy from canonical PR branch; provision external HTTPS route and protect access; verify outside localhost. Do not replace unrelated services.
-- [x] Preserve gateway Basic authentication on every hosted path while forwarding browser JWTs through configurable `X-MGTS-Authorization`; restore backend `Authorization`, strip the transport header, and keep SSR on standard `Authorization`. Add focused frontend/Compose checks and validate Caddy syntax/order; do not add public bypasses or default admin credentials.
+- [x] [HISTORICAL — superseded by `primevue-sakai-admin-workspace` browser HTTP Basic correction] Preserve gateway Basic authentication on every hosted path while forwarding browser JWTs through configurable `X-MGTS-Authorization`; restore backend `Authorization`, strip the transport header, and keep SSR on standard `Authorization`. Add focused frontend/Compose checks and validate Caddy syntax/order; do not add public bypasses or default admin credentials.
 
 Historical Alembic verification (superseded): 6 semantic/source tests; offline DDL emission; live PostgreSQL fresh + legacy-base + repeated upgrade passed, sentinel user preserved. Old SQL parity was proven against commit 05a644f before removal. The populated local preview was restarted through scripts/preview.sh up: all five objects survived, `alembic_version` was 20261124_0001, backend/frontend healthy and /admin HTTP 200. At that time, external hosted routing and the migration-failure runtime gate remained pending. This record documents only the former implementation; it is not proof for the current SQL initializer.
 
@@ -31,11 +31,11 @@ Historical Alembic verification (superseded): 6 semantic/source tests; offline D
 
 - [x] Apply merged personal guard fix PR373 through canonical sync; frontend push and PR1 SHA/commits readback now pass at 4065ab8.
 - [x] Honor user-selected hackathon source delivery without GitHub admin: render existing Compose, stage exact Git archive through Dokploy operator, build using managed revision-specific contexts; preserve auth and secrets.
-- [x] Verify archive-backed deployment 7122dea: HTTPS unauthenticated401/authenticated200, app login200, authenticated objects/statuses/users200; both logins admin.
+- [x] [HISTORICAL — verifies the prior custom app-login/JWT bridge only] Verify archive-backed deployment 7122dea: HTTPS unauthenticated401/authenticated200, app login200, authenticated objects/statuses/users200; both logins admin.
 
 - [x] Provision requested preview credentials from canonical secrets and synthetic admin/demo records (not default seed passwords).
 - [x] Restore rendered Compose from repository after sanitized MCP readback was mistakenly reused; never submit redacted API output as configuration.
 - [x] Correct bcrypt literal escaping with split/join (JavaScript replacement strings interpret `$$`); public gateway now accepts configured credentials.
-- [x] Verify deployed persistent-cookie source and 30-day JWT via HTTP; 19 frontend unit tests pass. Browser persistence is not runtime-tested per explicit prohibition.
+- [x] [HISTORICAL — superseded by browser-managed Basic credential caching; not a 30-day browser-session guarantee] Verify deployed persistent-cookie source and 30-day JWT via HTTP; 19 frontend unit tests pass. Browser persistence is not runtime-tested per explicit prohibition.
 
-Runtime 2026-11-25: source 7122dea238230b3aeed0355d9300dc205c1f49c0 deployed through Dokploy; Alembic package/config/migrations absent in backend image. SQL initializer succeeded; existing demo data and admin preserved. Public URL and temporary access credentials recorded in private PR1. No browser checks remain or were run after removal.
+Historical runtime evidence (2026-11-25, source 7122dea238230b3aeed0355d9300dc205c1f49c0): deployed through Dokploy with the prior JWT bridge; Alembic package/config/migrations absent in backend image. SQL initializer succeeded; existing demo data and admin preserved. Public URL and temporary access credentials were recorded in private PR1. This is not evidence for the current HTTP Basic candidate. No browser checks remain or were run after removal.

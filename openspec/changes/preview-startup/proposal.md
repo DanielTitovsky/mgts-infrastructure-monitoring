@@ -14,10 +14,15 @@ host or modify unrelated Caddy services. All passwords stay canonical; hostname
 and environment-specific overrides remain declarative. A created resource is
 not deployment proof.
 
-The hosted gateway must retain HTTP Basic authentication for every path while
-the backend continues to require JWT authorization. Browser requests use the
-declarative public `apiTokenHeader` (default `Authorization`, hosted override
-`X-MGTS-Authorization`); after Basic authentication Caddy maps that header to
-backend `Authorization` and strips the transport header. SSR continues to send
-`Authorization` directly to the internal API. Do not add an unauthenticated
-gateway/API bypass or default admin credentials.
+## Historical hosted-gateway auth proposal — superseded
+
+The earlier candidate retained HTTP Basic at the gateway but bridged browser
+JWTs using the public `apiTokenHeader` (hosted override
+`X-MGTS-Authorization`) and rewrote that header to backend `Authorization`.
+This was superseded by the current browser HTTP Basic contract in
+[`primevue-sakai-admin-workspace`](../primevue-sakai-admin-workspace/specs/admin-workspace/spec.md):
+the gateway forwards the original `Authorization` header unchanged, the
+frontend has no custom login/token-cookie bridge, and SSR forwards the incoming
+header only to its configured internal API target. The old behavior remains
+historical evidence, not current implementation guidance. Gateway protection
+and the absence of public bypasses/default credentials remain required.

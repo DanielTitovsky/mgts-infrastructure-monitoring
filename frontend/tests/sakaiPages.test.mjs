@@ -33,18 +33,11 @@ test('admin pages and tables use Sakai page, table, and form utilities instead o
   }
 })
 
-test('login retains the existing auth contract and uses the upstream Sakai login structure', async () => {
-  const login = await readFile(new URL('pages/admin/index.vue', frontendRoot), 'utf8')
+test('admin entry route redirects to objects instead of collecting credentials', async () => {
+  const adminEntry = await readFile(new URL('pages/admin/index.vue', frontendRoot), 'utf8')
 
-  assert.match(login, /bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen/)
-  assert.match(login, /<form[^>]*@submit\.prevent="onSubmit"/)
-  assert.match(login, /label for="login-username"[^>]*>Имя пользователя/)
-  assert.match(login, /label for="login-password"[^>]*>Пароль/)
-  assert.match(login, /label="Войти"/)
-  assert.match(login, /useRequest\('\/api\/auth\/login'/)
-  assert.match(login, /body: \{ username: login\.value, password: password\.value \}/)
-  assert.match(login, /useCookie\('token',\s*tokenCookieOptions\(token,\s*window\.location\.protocol === 'https:'\)\)\.value = token/)
-  assert.match(login, /router\.push\('\/admin\/objects'\)/)
+  assert.match(adminEntry, /await navigateTo\('\/admin\/objects',\s*\{\s*redirectCode:\s*302\s*\}\)/)
+  assert.doesNotMatch(adminEntry, /<form|password|username|\/api\/auth\/login|useCookie\(['"]token/)
 })
 
 test('list pages retain their established API routes, row actions, sorting, and pagination', async () => {

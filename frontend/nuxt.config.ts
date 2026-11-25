@@ -42,9 +42,6 @@ export default defineNuxtConfig({
         // На клиенте запросы идут по относительным путям через прокси.
         apiTarget: apiProxyTarget,
         public: {
-            // Browser JWT header; hosted gateway deployments can override it
-            // to avoid colliding with gateway HTTP Basic authentication.
-            apiTokenHeader: 'Authorization',
             // Demo mode is opt-in and only routes useRequest through mockApi.
             demoMode: config.useMocks,
         },
