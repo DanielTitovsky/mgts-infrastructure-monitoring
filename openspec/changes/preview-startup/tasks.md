@@ -15,7 +15,7 @@ Historical intermediate correction (superseded by backend Alembic, then the curr
 - [x] Backend Alembic revisions and legacy/fresh parity tests; remove startup DDL and obsolete SQL owners.
 - [x] Compose one-shot migration ordering for API/worker; update both launchers to explicit seed.
 - [x] Historical Alembic verification: fresh, existing and repeat data preservation passed; see the evidence below. It is not current startup guidance.
-- [ ] Publish correction, verify PR identity/head and restart existing preview without deleting data.
+- [x] Publish correction in PR1, verify remote/PR SHA and commits membership; redeploy without deleting volumes.
 - [ ] Deploy separate MGTS preview through Dokploy from canonical PR branch; provision external HTTPS route and protect access; verify outside localhost. Do not replace unrelated services.
 - [x] Preserve gateway Basic authentication on every hosted path while forwarding browser JWTs through configurable `X-MGTS-Authorization`; restore backend `Authorization`, strip the transport header, and keep SSR on standard `Authorization`. Add focused frontend/Compose checks and validate Caddy syntax/order; do not add public bypasses or default admin credentials.
 
@@ -31,9 +31,11 @@ Historical Alembic verification (superseded): 6 semantic/source tests; offline D
 
 - [x] Apply merged personal guard fix PR373 through canonical sync; frontend push and PR1 SHA/commits readback now pass at 4065ab8.
 - [x] Honor user-selected hackathon source delivery without GitHub admin: render existing Compose, stage exact Git archive through Dokploy operator, build using managed revision-specific contexts; preserve auth and secrets.
-- [ ] Verify archive-backed Dokploy deployment and public authenticated HTTPS URL; complete explicit account provisioning without default public admin credentials.
+- [x] Verify archive-backed deployment 7122dea: HTTPS unauthenticated401/authenticated200, app login200, authenticated objects/statuses/users200; both logins admin.
 
 - [x] Provision requested preview credentials from canonical secrets and synthetic admin/demo records (not default seed passwords).
 - [x] Restore rendered Compose from repository after sanitized MCP readback was mistakenly reused; never submit redacted API output as configuration.
 - [x] Correct bcrypt literal escaping with split/join (JavaScript replacement strings interpret `$$`); public gateway now accepts configured credentials.
-- [ ] Verify persistent 30-day login on public deployed candidate and publish updated PR1 evidence.
+- [x] Verify deployed persistent-cookie source and 30-day JWT via HTTP; 19 frontend unit tests pass. Browser persistence is not runtime-tested per explicit prohibition.
+
+Runtime 2026-11-25: source 7122dea238230b3aeed0355d9300dc205c1f49c0 deployed through Dokploy; Alembic package/config/migrations absent in backend image. SQL initializer succeeded; existing demo data and admin preserved. Public URL and temporary access credentials recorded in private PR1. No browser checks remain or were run after removal.
