@@ -21,8 +21,6 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
 RUN pip install --no-cache-dir -r requirements-worker.txt
 
 COPY backend/app ./app
-COPY backend/migrations ./migrations
-COPY backend/alembic.ini ./alembic.ini
 COPY backend/worker.py backend/main.py backend/seed.py ./
 
 RUN useradd --create-home --uid 1000 appuser \

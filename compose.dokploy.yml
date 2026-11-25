@@ -4,10 +4,10 @@ services:
     extends: {file: compose.preview.yml, service: db}
     environment:
       POSTGRES_PASSWORD: ${MGTS_DB_PASSWORD:?required}
-  migrate:
-    extends: {file: compose.preview.yml, service: migrate}
+  schema-init:
+    extends: {file: compose.preview.yml, service: schema-init}
     environment:
-      DB_PASSWORD: ${MGTS_DB_PASSWORD:?required}
+      PGPASSWORD: ${MGTS_DB_PASSWORD:?required}
   minio:
     extends: {file: compose.preview.yml, service: minio}
     environment:
@@ -19,6 +19,7 @@ services:
       S3_SECRET_KEY: ${MGTS_STORAGE_PASSWORD:?required}
       JWT_SECRET: ${MGTS_JWT_SECRET:?required}
       AUTH_REQUIRED: 'true'
+      JWT_EXPIRES_MINUTES: '43200' # Hackathon: persistent login for 30 days
   frontend:
     extends: {file: compose.preview.yml, service: frontend}
     environment:
@@ -26,6 +27,8 @@ services:
     ports: !reset []
   gateway:
     image: caddy:2.10.2-alpine
+    labels:
+      mgts.gateway-config: admin-login-v1
     environment:
       PREVIEW_PASSWORD_HASH: ${MGTS_PREVIEW_PASSWORD_HASH:?required}
     ports:
@@ -44,7 +47,7 @@ configs:
       https://${MGTS_PREVIEW_HOST:?required}:8443 {
         tls internal
         basic_auth {
-          preview {$$PREVIEW_PASSWORD_HASH}
+          admin {$$PREVIEW_PASSWORD_HASH}
         }
         reverse_proxy frontend:3000 {
           header_up Authorization {http.request.header.X-MGTS-Authorization}

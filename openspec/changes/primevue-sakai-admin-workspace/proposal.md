@@ -7,6 +7,7 @@ The existing admin screens use a minimal legacy layout that makes the object and
 ## Scope
 
 - Restyle the existing login, admin navigation, tables, forms, and map placeholder without replacing the current domain workflows.
+- Persist the existing browser JWT cookie across browser restarts until its token expiry, capped at 30 days, using a root path, SameSite=Lax, and Secure only over HTTPS.
 - Keep real FastAPI requests as the default. Provide an explicit, opt-in in-memory demo mode for a backend-free walkthrough and clearly label its synthetic data.
 - Preserve existing authentication, API, and object-photo behavior.
 

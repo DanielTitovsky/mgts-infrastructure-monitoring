@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useNotifications } from '~/composables/useNotifications'
 import { useRequest } from '~/services/useRequest'
+import { tokenCookieOptions } from '~/utils/authCookie'
 
 definePageMeta({ layout: 'default' })
 
@@ -37,8 +38,8 @@ async function onSubmit() {
       return
     }
 
-    // Keep the existing FastAPI token-cookie contract.
-    useCookie('token').value = token
+    // Persist the existing FastAPI token cookie for this JWT's useful lifetime.
+    useCookie('token', tokenCookieOptions(token, window.location.protocol === 'https:')).value = token
     notifications.success('Вы вошли в систему')
     await router.push('/admin/objects')
   } finally {

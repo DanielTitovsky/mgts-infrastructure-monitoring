@@ -7,13 +7,15 @@
 - [x] Complete a production build (verified after memory recovery; historical failure follows). The client and SSR bundles compiled, but the host `earlyoom` daemon sent SIGTERM to the Nitro Node process during generation when available memory fell below its 12% threshold with swap full; the earlyoom journal confirms the victim, and no Nuxt/Nitro error or successful build result is claimed. Retry only when host memory is safe.
 - [x] Inspect the final frontend/OpenSpec diff and create one focused candidate commit.
 - [x] Restore developer-owned frontend/config.ts defaults and connect them to Nuxt runtime config; environment overrides must still work.
+- [x] Persist the JWT cookie through browser restarts until its actual expiry (capped at 30 days), with cookie-option regression tests.
+- [x] Remove browser automation checks per explicit user correction; do not run browser tests. Verify session expiry with unit tests and HTTP/API checks instead.
 
 ## Actual Sakai template adoption (in progress)
 - [x] Import pinned upstream layout, styling, theme utilities and license; adapt Nuxt routing/state safely.
 - [x] Apply upstream page/login/form/table patterns to all MGTS screens without changing API/photo contracts.
 - [x] Remove superseded handcrafted shell/style artifacts after functionality mapping.
 - [x] Verify upstream provenance, configuration/default API mode and focused regression tests.
-- [ ] Build and run candidate with bounded resources; DOM login/navigation/photo/table smoke (no screenshots).
+- [ ] Build and run candidate with bounded resources; verify HTTP/API responses. Browser click verification is explicitly excluded by the user.
 - [ ] Update existing Draft PR1 and Dokploy preview when publication is possible; do not claim a public URL without runtime proof.
 
 Template integration evidence: npm ci passed; 16 Node tests passed; 15 page/table Vue SFCs compiled in the page slice. Coordinator compared all 19 imported asset files byte-for-byte against the pinned git submodule and verified the seven original layout/composable hashes. Fixed two integration regressions with red/green tests: explicitly import the nested Sakai composable in shell/topbar, and remove unused empty legacy site layout with unresolved CSS import. No custom legacy shell SCSS remains.
@@ -27,3 +29,5 @@ Build remains incomplete: first real build found and fixed legacy site import; n
 - [x] Extend and pass DOM-only form/photo smoke: open create form, fill type, reject non-image file, select synthetic PNG, verify blob preview, remove unsaved photo. No screenshot, image interpretation, upload persistence or ML processing claim. PrimeVue duplicates alt on its wrapper; use the actual img role for a strict locator.
 
 The earlier memory-blocked notes above are historical and superseded by this successful build and navigation proof. Hosted publication remains pending; Dokploy readback still reports no deployments.
+
+Latest correction: prior completed DOM checks above are historical evidence only, not commands to rerun. `scripts/test-browser-smoke.py` was removed; browser checks are no longer part of this task.

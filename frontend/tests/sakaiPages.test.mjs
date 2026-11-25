@@ -43,7 +43,7 @@ test('login retains the existing auth contract and uses the upstream Sakai login
   assert.match(login, /label="Войти"/)
   assert.match(login, /useRequest\('\/api\/auth\/login'/)
   assert.match(login, /body: \{ username: login\.value, password: password\.value \}/)
-  assert.match(login, /useCookie\('token'\)\.value = token/)
+  assert.match(login, /useCookie\('token',\s*tokenCookieOptions\(token,\s*window\.location\.protocol === 'https:'\)\)\.value = token/)
   assert.match(login, /router\.push\('\/admin\/objects'\)/)
 })
 

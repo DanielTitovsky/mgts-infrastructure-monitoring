@@ -88,9 +88,10 @@ mgts-infrastructure-monitoring/
 
 ## Схема БД и конфигурация
 
-Backend владеет версионированной схемой: `backend/migrations/` и
-`backend/alembic.ini`. `docker compose run --rm migrate` применяет миграции;
-API и воркер зависят от успешного завершения этого шага и сами DDL не выполняют.
+Единственный источник схемы — `backend/sql/schema.sql`. Команда
+`docker compose run --rm schema-init` выполняет идемпотентный
+`psql`-инициализатор в одной транзакции после готовности PostgreSQL; API и
+воркер запускаются только после его успеха и сами DDL не выполняют.
 Демо-данные добавляются отдельно: `docker compose exec backend python seed.py`.
 
 Настройки frontend для разработчиков: `frontend/config.ts`; Nuxt использует
