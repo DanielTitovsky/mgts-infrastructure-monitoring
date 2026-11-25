@@ -24,4 +24,4 @@
 - [x] Run one bounded CPU prediction using the exact existing checkpoint and local repository image; capture numeric-only output with no visual interpretation or prediction artifact writes.
 - [x] Document local/container model path setup, exact checkpoint provenance/hash and generic class limitation, optional dependency setup, and unresolved license/data provenance.
 
-- [ ] Deploy authenticated Marimo through Dokploy, prove hosted model inference and password login using HTTP (no browser), then put both demo URLs/access details in both branch READMEs and PR bodies.
+- [x] Deploy authenticated Marimo through Dokploy, prove hosted model inference and password login using HTTP (no browser), then put both demo URLs/access details in both branch READMEs and PR bodies.
