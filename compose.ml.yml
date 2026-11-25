@@ -16,6 +16,7 @@ services:
       MGTS_DATA_ARCHIVE_ROOT: /data/archive
       MGTS_DATA_HUB_ROOT: /data/hub
       MGTS_DATA_OUTPUT_ROOT: /data/output
+      MGTS_MODEL_PATH: /models/best.pt
     secrets:
       - source: marimo_password
         target: marimo_password
@@ -29,6 +30,12 @@ services:
       - type: volume
         source: normalized_output
         target: /data/output
+      - type: bind
+        source: ${MGTS_MODEL_FILE:-./cv/ml/best.pt}
+        target: /models/best.pt
+        read_only: true
+        bind:
+          create_host_path: false
     user: "10001:10001"
     cap_drop:
       - ALL

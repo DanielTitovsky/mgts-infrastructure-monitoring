@@ -19,3 +19,9 @@
 - [x] Configure required password-file authentication, protected Hugging Face runtime configuration, startup log redaction, and no automatic pipeline work; cover the contract with focused tests.
 - [x] Document local container operation and the exact Dokploy Compose source/service-port path without changing the local-only SSH preview.
 - [x] Validate Compose configuration, focused tests (77 passed; 88% coverage), strict Marimo check, bounded image build, and authenticated text-only HTTP smoke: healthy as UID 10001; loopback-bound; login GET 200, password POST 302, authenticated page GET 200; all three data volumes remained empty; no password in process args/environment or logs; startup access-token URL redacted.
+- [x] Add optional CPU-only, explicit-submit photo inference with an existing read-only checkpoint; do not train or download weights.
+- [x] Test inference input guards, checkpoint task/class metadata, class/confidence/box result mapping with a mocked predictor, and verify Marimo submit gating.
+- [x] Run one bounded CPU prediction using the exact existing checkpoint and local repository image; capture numeric-only output with no visual interpretation or prediction artifact writes.
+- [x] Document local/container model path setup, exact checkpoint provenance/hash and generic class limitation, optional dependency setup, and unresolved license/data provenance.
+
+- [ ] Deploy authenticated Marimo through Dokploy, prove hosted model inference and password login using HTTP (no browser), then put both demo URLs/access details in both branch READMEs and PR bodies.

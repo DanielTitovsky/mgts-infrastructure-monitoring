@@ -46,13 +46,20 @@ def test_compose_runs_only_the_authenticated_workbench_with_loopback_host_port()
         "MGTS_DATA_ARCHIVE_ROOT": "/data/archive",
         "MGTS_DATA_HUB_ROOT": "/data/hub",
         "MGTS_DATA_OUTPUT_ROOT": "/data/output",
+        "MGTS_MODEL_PATH": "/models/best.pt",
     }
     assert service["secrets"] == [{"source": "marimo_password", "target": "marimo_password"}]
     assert {mount["target"] for mount in service["volumes"]} == {
         "/data/archive",
         "/data/hub",
         "/data/output",
+        "/models/best.pt",
     }
+    model_mount = next(mount for mount in service["volumes"] if mount["target"] == "/models/best.pt")
+    assert model_mount["type"] == "bind"
+    assert model_mount["source"] == "${MGTS_MODEL_FILE:-./cv/ml/best.pt}"
+    assert model_mount["read_only"] is True
+    assert model_mount["bind"]["create_host_path"] is False
     assert service["cap_drop"] == ["ALL"]
     assert service["security_opt"] == ["no-new-privileges:true"]
     assert compose["secrets"]["marimo_password"]["file"] == (
@@ -66,8 +73,8 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
     entrypoint = (pipeline_root / "container-entrypoint.sh").read_text(encoding="utf-8")
     ignore = (pipeline_root / ".dockerignore").read_text(encoding="utf-8")
 
-    assert "uv sync --locked --no-dev --extra ui --no-install-project" in dockerfile
-    assert "uv sync --locked --no-dev --extra ui" in dockerfile
+    assert "uv sync --locked --no-dev --extra ui --extra inference --no-install-project" in dockerfile
+    assert "uv sync --locked --no-dev --extra ui --extra inference" in dockerfile
     assert "USER 10001:10001" in dockerfile
     assert "--host 0.0.0.0" in entrypoint
     assert '--token-password-file "$MARIMO_PASSWORD_FILE"' in entrypoint
@@ -75,3 +82,19 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
     assert "fetch" not in entrypoint and "normalize" not in entrypoint
     assert "--token-password " not in entrypoint
     assert ".venv" in ignore
+
+
+def test_inference_dependency_is_routed_to_the_cpu_wheel_index() -> None:
+    pyproject = REPOSITORY_ROOT / "cv" / "data_pipeline" / "pyproject.toml"
+    content = pyproject.read_text(encoding="utf-8")
+    lock = (pyproject.parent / "uv.lock").read_text(encoding="utf-8")
+
+    assert '"ultralytics==8.4.214"' in content
+    assert 'name = "pytorch-cpu"' in content
+    assert 'url = "https://download.pytorch.org/whl/cpu"' in content
+    assert 'torch = { index = "pytorch-cpu" }' in content
+    assert 'torchvision = { index = "pytorch-cpu" }' in content
+    assert 'version = "2.15.0+cpu"' in lock
+    assert 'version = "0.29.2+cpu"' in lock
+    assert "nvidia-cuda-runtime" not in lock
+    assert "nvidia-cudnn" not in lock

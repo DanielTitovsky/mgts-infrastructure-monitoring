@@ -42,12 +42,18 @@ uv run --extra test python -m pytest --cov=mgts_data_pipeline --cov-report=term-
 `compose.ml.yml` at the repository root is the dedicated container definition
 for the existing Marimo workbench. Its build context is only
 `cv/data_pipeline`; it installs the committed `uv.lock` with the optional UI
-extra and reuses the same CLI-backed form. The container listens on port 8790
+and CPU inference extras and reuses the same CLI-backed form. The existing
+`cv/ml/best.pt` checkpoint is not copied into the image: Compose bind-mounts a
+host artifact read-only at `/models/best.pt`. The default host source is
+`./cv/ml/best.pt`; set `MGTS_MODEL_FILE` to an absolute path for a
+host-managed artifact. The app reads it only after photo-form submission and
+never downloads replacement weights. The container listens on port 8790
 inside its network, while the default host publishing is restricted to
 `127.0.0.1:8790`. Separate named volumes preserve `/data/archive`, `/data/hub`,
 and `/data/output`; set `MGTS_VOLUME_PREFIX` if a different deployment needs
-its own volume names. Starting the service serves the form only—no dataset is
-fetched, normalized, validated, or trained until a user submits an operation.
+its own volume names. Starting the service serves the forms only—no dataset is
+fetched, normalized, validated, or trained, and no photo inference runs until
+a user explicitly submits the corresponding operation.
 
 Before starting locally, provision a non-empty password file with a secure
 secret manager or editor at `.secrets/marimo_password`; this path is ignored by
@@ -80,20 +86,21 @@ only a local developer preview, not the public deployment path.
 
 ## Interactive local workbench (optional)
 
-Install the optional Marimo UI, then either run it on your local machine or
-use the configured server preview:
+Install the optional Marimo UI and CPU inference extras, then either run it on
+your local machine or use the configured server preview:
 
 ```sh
-uv sync --project cv/data_pipeline --extra ui
+uv sync --project cv/data_pipeline --extra ui --extra inference
 # Local app; Marimo prints its URL and listens on loopback by default.
-uv run --project cv/data_pipeline --extra ui marimo run \
+MGTS_MODEL_PATH="$PWD/cv/ml/best.pt" uv run --project cv/data_pipeline \
+  --extra ui --extra inference marimo run \
   cv/data_pipeline/notebooks/dataset_workbench.py
 # Static notebook check.
-uv run --project cv/data_pipeline --extra ui marimo check --strict \
+uv run --project cv/data_pipeline --extra ui --extra inference marimo check --strict \
   cv/data_pipeline/notebooks/dataset_workbench.py
 ```
 
-The app is a thin form over the same `mgts-datasets` CLI. It does not duplicate
+The dataset app is a thin form over the same `mgts-datasets` CLI. It does not duplicate
 normalization code. Select an action, source(s), roots and paths, then submit
 the form: **opening the app or editing form controls does not run a pipeline
 operation**. The default is the known-working `broken_poles_v2` starter source;
@@ -101,6 +108,32 @@ its data is train-only and remains unsuitable for evaluation without a separate
 held-out split. The form exposes no image preview, model training, Hub upload,
 or token field. For private Hub downloads, provision `HF_TOKEN` to the server
 process through the configured secret store.
+
+Photo inference is a separate explicit-submit form. It accepts one JPEG, PNG,
+or WebP file up to 10 MB / 20 megapixels, runs on CPU, does not render or save
+the image, and returns class names from the checkpoint metadata, confidence,
+and source-image pixel `xyxy` boxes. Local launchers must point
+`MGTS_MODEL_PATH` to an existing trusted checkpoint; the default is
+`/models/best.pt`. A missing or invalid checkpoint fails closed before any
+prediction—there is no weight download or training fallback.
+
+The selected existing artifact is `cv/ml/best.pt`, whose checkpoint metadata
+identifies task `detect`, class `odn_pole`, and YOLOv8n base architecture.
+Its SHA-256 is
+`17fa86e2c49de2e125f84b7badfb2f6983aa8a607dedee5eede4743d92d3883d`.
+This is generic pole-object localization only, not a damage detector, and no
+accuracy or held-out evaluation claim is made. The repository does not record
+the checkpoint's original training-data source or license. Ultralytics 8.4.214
+is licensed AGPL-3.0 ([upstream source and
+license](https://github.com/ultralytics/ultralytics/blob/main/LICENSE));
+resolve applicable source-offer/enterprise obligations before any public or
+production deployment. Do not expose a model-file download endpoint.
+
+The inference extra selects CPU-only Torch/TorchVision wheels from the official
+CPU wheel index; no CUDA runtime is installed. The install and launch commands
+above show the local model path. For the Compose service, `MGTS_MODEL_PATH` is
+fixed at `/models/best.pt` and the host-side mount source is configurable with
+`MGTS_MODEL_FILE`.
 
 For a user-browser preview on the configured server, the workbench launcher
 starts, checks, or stops the app in the dedicated demo session. It uses

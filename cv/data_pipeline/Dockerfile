@@ -11,16 +11,16 @@ ENV HOME=/home/workbench \
 WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev --extra ui --no-install-project
+RUN uv sync --locked --no-dev --extra ui --extra inference --no-install-project
 
 COPY mgts_data_pipeline ./mgts_data_pipeline
 COPY notebooks ./notebooks
 COPY container-entrypoint.sh /usr/local/bin/marimo-container-entrypoint
 
-RUN uv sync --locked --no-dev --extra ui \
+RUN uv sync --locked --no-dev --extra ui --extra inference \
     && groupadd --system --gid 10001 workbench \
     && useradd --system --uid 10001 --gid workbench --create-home --home-dir /home/workbench workbench \
-    && mkdir -p /data/archive /data/hub /data/output \
+    && mkdir -p /data/archive /data/hub /data/output /models \
     && chown -R workbench:workbench /data /home/workbench \
     && chmod 0755 /usr/local/bin/marimo-container-entrypoint
 

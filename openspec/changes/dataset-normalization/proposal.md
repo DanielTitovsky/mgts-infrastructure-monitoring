@@ -60,3 +60,29 @@ Acceptance: static tests cover the container/Compose security and persistence
 contract; `docker compose config` validates the declarative service;
 `marimo check --strict` and focused pipeline tests pass; a bounded image build
 and authenticated text-only HTTP smoke do not trigger data work.
+
+## Optional photo inference
+
+Add one explicit-submit photo inference form to the optional Marimo workbench.
+It accepts a single bounded JPEG/PNG/WebP upload, uses the already-present
+`cv/ml/best.pt` checkpoint (metadata: YOLO detection, class `odn_pole`,
+SHA-256 `17fa86e2c49de2e125f84b7badfb2f6983aa8a607dedee5eede4743d92d3883d`),
+and returns class, confidence, and source-image pixel `xyxy` boxes as structured
+text. The checkpoint is mounted read-only at `/models/best.pt`; a configured
+`MGTS_MODEL_PATH` must resolve to an existing file before the predictor is
+constructed. The predictor obtains class names and task from checkpoint
+metadata rather than assuming a meaning from its filename. Inference runs on
+CPU, does not save or preview images, and never downloads weights or trains.
+Its single generic class is pole-object localization only: it is not a damaged
+pole or defect detector, and its output is not an accuracy/validation claim.
+The optional CPU inference dependency must not pull in CUDA variants.
+
+Acceptance: unit tests use a mocked local predictor for result mapping,
+explicit-input validation, task metadata, and the no-network-on-missing-file
+guard; the Marimo UI only invokes inference after its form is submitted. A
+single CPU inference against an existing repository test image confirms the
+installed inference stack can load the exact local checkpoint and returns
+numeric detection output without interpreting pixels, training, or writing
+prediction artifacts. Document model hash, class/task limitations, read-only
+mount/configuration, CPU-only install, and the absence of recorded model/data
+license provenance. No model binaries are added.

@@ -8,19 +8,26 @@ app = marimo.App(width="medium")
 
 @app.cell
 def _():
+    import os
     import marimo as mo
 
     from mgts_data_pipeline.cli import DEFAULT_ARCHIVE_ROOT, DEFAULT_HUB_ROOT
     from mgts_data_pipeline.errors import PipelineError
+    from mgts_data_pipeline.inference import InferenceError, MAX_IMAGE_BYTES, infer_photo
     from mgts_data_pipeline.registry import SOURCE_IDS
     from mgts_data_pipeline.workbench import DEFAULT_OUTPUT_PATH, run_submission
 
+    model_path = os.environ.get("MGTS_MODEL_PATH", "/models/best.pt")
     return (
         DEFAULT_ARCHIVE_ROOT,
         DEFAULT_HUB_ROOT,
         DEFAULT_OUTPUT_PATH,
+        InferenceError,
+        MAX_IMAGE_BYTES,
         PipelineError,
         SOURCE_IDS,
+        infer_photo,
+        model_path,
         mo,
         run_submission,
     )
@@ -141,6 +148,64 @@ def _(PipelineError, mo, run_submission, submitted_form):
         else:
             output = mo.vstack([mo.md("### Результат (структурированный отчёт)"), mo.json(report)])
     output
+    return
+
+
+@app.cell
+def _(MAX_IMAGE_BYTES, mo):
+    photo_upload = mo.ui.file(
+        filetypes=[".jpg", ".jpeg", ".png", ".webp"],
+        max_size=MAX_IMAGE_BYTES,
+        label="Фото (JPEG, PNG или WebP; до 10 MB)",
+    )
+    photo_form = mo.ui.form(
+        mo.md("""
+        ### Распознавание объектов на фото (опционально)
+
+        Загрузи одно фото и явно отправь форму. Изменение поля само по себе
+        ничего не запускает. Модель локально обнаруживает объекты класса
+        odn_pole; это не оценка повреждений и не измерение точности.
+
+        Ultralytics 8.4.214 использует лицензию AGPL-3.0
+        ([исходный код и лицензия](https://github.com/ultralytics/ultralytics/blob/main/LICENSE)).
+        Источник и лицензия данных обучения этого checkpoint в репозитории
+        не зафиксированы.
+
+        **Файл** {photo}
+        """).batch(photo=photo_upload),
+        submit_button_label="Найти столбы на фото",
+        bordered=True,
+    )
+    photo_form
+    return (photo_form,)
+
+
+@app.cell
+def _(InferenceError, infer_photo, mo, model_path, photo_form):
+    if photo_form.value is None:
+        photo_output = mo.md("Загрузи фото и нажми кнопку отправки, чтобы выполнить локальное распознавание.")
+    else:
+        uploaded_files = photo_form.value["photo"]
+        if not uploaded_files:
+            photo_output = mo.callout(mo.md("Сначала выбери фото."), kind="danger")
+        else:
+            uploaded = uploaded_files[0]
+            try:
+                photo_report = infer_photo(
+                    filename=uploaded.name,
+                    contents=uploaded.contents,
+                    model_path=model_path,
+                )
+            except InferenceError as error:
+                photo_output = mo.callout(mo.md(str(error)), kind="danger")
+            else:
+                photo_output = mo.vstack(
+                    [
+                        mo.md("### Результат (класс, confidence, bbox в пикселях)"),
+                        mo.json(photo_report),
+                    ]
+                )
+    photo_output
     return
 
 

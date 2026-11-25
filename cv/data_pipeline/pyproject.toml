@@ -13,6 +13,20 @@ dependencies = [
 [project.optional-dependencies]
 test = ["pytest>=8,<9", "pytest-cov>=6,<8"]
 ui = ["marimo>=0.15,<1"]
+inference = [
+  "torch>=2.15,<3",
+  "torchvision>=0.29,<1",
+  "ultralytics==8.4.214",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
 
 [project.scripts]
 mgts-datasets = "mgts_data_pipeline.cli:main"
