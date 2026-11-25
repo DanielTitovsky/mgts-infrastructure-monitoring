@@ -13,11 +13,12 @@ def _():
     from mgts_data_pipeline.cli import DEFAULT_ARCHIVE_ROOT, DEFAULT_HUB_ROOT
     from mgts_data_pipeline.errors import PipelineError
     from mgts_data_pipeline.registry import SOURCE_IDS
-    from mgts_data_pipeline.workbench import run_submission
+    from mgts_data_pipeline.workbench import DEFAULT_OUTPUT_PATH, run_submission
 
     return (
         DEFAULT_ARCHIVE_ROOT,
         DEFAULT_HUB_ROOT,
+        DEFAULT_OUTPUT_PATH,
         PipelineError,
         SOURCE_IDS,
         mo,
@@ -59,7 +60,7 @@ def _(mo):
 
 
 @app.cell
-def _(DEFAULT_ARCHIVE_ROOT, DEFAULT_HUB_ROOT, SOURCE_IDS, mo):
+def _(DEFAULT_ARCHIVE_ROOT, DEFAULT_HUB_ROOT, DEFAULT_OUTPUT_PATH, SOURCE_IDS, mo):
     action = mo.ui.dropdown(
         options=["inspect", "fetch", "normalize", "validate"],
         value="inspect",
@@ -73,11 +74,11 @@ def _(DEFAULT_ARCHIVE_ROOT, DEFAULT_HUB_ROOT, SOURCE_IDS, mo):
     archive_root = mo.ui.text(value=str(DEFAULT_ARCHIVE_ROOT), label="Папка ZIP-архивов")
     hub_root = mo.ui.text(value=str(DEFAULT_HUB_ROOT), label="Локальный кэш Hugging Face")
     output_path = mo.ui.text(
-        value="/tmp/mgts-normalized-broken-poles-ui",
+        value=str(DEFAULT_OUTPUT_PATH),
         label="Новый каталог результата (только normalize; перезапись запрещена)",
     )
     validation_path = mo.ui.text(
-        value="/tmp/mgts-normalized-broken-poles-ui",
+        value=str(DEFAULT_OUTPUT_PATH),
         label="Каталог для validate",
     )
     strict_invalid = mo.ui.checkbox(label="Остановиться на первой невалидной разметке")

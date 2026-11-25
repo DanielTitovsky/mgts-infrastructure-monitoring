@@ -14,4 +14,8 @@
 - [x] Test submit gating, CLI argument mapping, configuration errors, and secret-safe launcher behavior; verify the Marimo app and local text-only smoke.
 - [x] Document local optional install/launch and current dataset risks in the governing pipeline guide.
 - [x] Start authenticated server-loopback preview in a dedicated session; verify password login, PID/readiness, no credential in argv/environment/output, and laptop-forward HTTP/text without exposing a public port.
-- [ ] Coordinator: publish the authorized Draft PR for the Marimo workbench candidate and verify the canonical PR identity, branch SHA, API head SHA, and commit membership.
+- [x] Coordinator: publish the authorized Draft PR for the Marimo workbench candidate and verify the canonical PR identity; candidate head `2d2efb32e000bbe1458c4f227ba2ed8b10237e83` was read back from the remote branch, PR API, and commits list.
+- [x] Add the locked, non-root Marimo container image and separate Compose service with loopback-by-default host publishing and persistent archive/Hub/output volumes.
+- [x] Configure required password-file authentication, protected Hugging Face runtime configuration, startup log redaction, and no automatic pipeline work; cover the contract with focused tests.
+- [x] Document local container operation and the exact Dokploy Compose source/service-port path without changing the local-only SSH preview.
+- [x] Validate Compose configuration, focused tests (77 passed; 88% coverage), strict Marimo check, bounded image build, and authenticated text-only HTTP smoke: healthy as UID 10001; loopback-bound; login GET 200, password POST 302, authenticated page GET 200; all three data volumes remained empty; no password in process args/environment or logs; startup access-token URL redacted.

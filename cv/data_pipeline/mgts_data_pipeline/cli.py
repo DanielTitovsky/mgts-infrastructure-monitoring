@@ -14,8 +14,12 @@ from .registry import HUB_REPOSITORY, HUB_REVISION, SOURCE_IDS, SOURCE_SPECS, so
 from .sources import fetch_sources, inspect_source, source_inputs
 
 
-DEFAULT_ARCHIVE_ROOT = Path("/tmp/mgts-dataset-transfer")
-DEFAULT_HUB_ROOT = Path.home() / ".cache" / "mgts-infrastructure-datasets"
+DEFAULT_ARCHIVE_ROOT = Path(
+    os.environ.get("MGTS_DATA_ARCHIVE_ROOT") or "/tmp/mgts-dataset-transfer"
+)
+DEFAULT_HUB_ROOT = Path(
+    os.environ.get("MGTS_DATA_HUB_ROOT") or Path.home() / ".cache" / "mgts-infrastructure-datasets"
+)
 
 
 def _source_arg(parser: argparse.ArgumentParser) -> None:

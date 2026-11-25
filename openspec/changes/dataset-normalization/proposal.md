@@ -40,3 +40,23 @@ runtime smoke verify the app; docs state the optional install and local launch
 commands. The requested server preview must have a protected canonical auth
 secret, a verified PID/readiness result, no credential in logs/argv, and an
 HTTP/text response through the laptop's loopback forward.
+
+## Containerized Marimo workbench
+
+Provide a separate, human-editable Compose deployment for the existing
+workbench, built from `cv/data_pipeline` and the committed `uv.lock`. Keep the
+app bound to `0.0.0.0` only inside the container; publish host port 8790 on
+loopback by default. Require password authentication from a read-only secret
+file, never a password argument, log entry, or URL. Configure the Hugging Face
+credential only through a protected runtime environment variable. Persist the
+archive, Hub cache, and normalized output roots in separate volumes. Startup
+must only serve the form: it must not fetch, normalize, validate, or train
+without an explicit submission. The existing pipeline remains the only owner
+of data operations. Document the Compose source path and the Dokploy service
+source path/port configuration; local SSH forwarding remains a developer-only
+preview and is not the public deployment path.
+
+Acceptance: static tests cover the container/Compose security and persistence
+contract; `docker compose config` validates the declarative service;
+`marimo check --strict` and focused pipeline tests pass; a bounded image build
+and authenticated text-only HTTP smoke do not trigger data work.

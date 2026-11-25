@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -8,6 +9,11 @@ from typing import Any
 from . import cli
 from .errors import PipelineError
 from .registry import source_ids
+
+
+DEFAULT_OUTPUT_PATH = (
+    Path(os.environ.get("MGTS_DATA_OUTPUT_ROOT") or "/tmp") / "mgts-normalized-broken-poles-ui"
+)
 
 
 def _required_path(value: str | Path | None, label: str) -> Path:

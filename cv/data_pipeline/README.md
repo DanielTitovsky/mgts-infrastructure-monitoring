@@ -37,6 +37,47 @@ cd cv/data_pipeline
 uv run --extra test python -m pytest --cov=mgts_data_pipeline --cov-report=term-missing
 ```
 
+## Containerized workbench (Compose and Dokploy)
+
+`compose.ml.yml` at the repository root is the dedicated container definition
+for the existing Marimo workbench. Its build context is only
+`cv/data_pipeline`; it installs the committed `uv.lock` with the optional UI
+extra and reuses the same CLI-backed form. The container listens on port 8790
+inside its network, while the default host publishing is restricted to
+`127.0.0.1:8790`. Separate named volumes preserve `/data/archive`, `/data/hub`,
+and `/data/output`; set `MGTS_VOLUME_PREFIX` if a different deployment needs
+its own volume names. Starting the service serves the form only—no dataset is
+fetched, normalized, validated, or trained until a user submits an operation.
+
+Before starting locally, provision a non-empty password file with a secure
+secret manager or editor at `.secrets/marimo_password`; this path is ignored by
+Git. Set `MARIMO_PASSWORD_FILE` to a protected absolute file path when using a
+different location. Do not put the password in Compose arguments, an image, a
+URL, or logs. The file is mounted read-only at `/run/secrets/marimo_password`
+and Marimo's access-token query string is redacted from container logs. Set
+`HF_TOKEN` only through a protected process environment or Dokploy secret; it
+is optional for starting the app and required only when an explicitly
+submitted private-Hub operation needs it.
+
+Validate and start the independent service from the repository root:
+
+```sh
+docker compose -f compose.ml.yml config --quiet
+docker compose -f compose.ml.yml up -d --build
+docker compose -f compose.ml.yml ps
+docker compose -f compose.ml.yml down  # preserves the named data volumes
+```
+
+For the public server deployment, configure Dokploy to build this repository
+candidate using Compose file `compose.ml.yml` from the repository root. Route
+the HTTPS domain to the `workbench` service on its internal port `8790`; keep
+the Compose host-port binding at its loopback default rather than publishing
+8790 directly to a public interface. Configure `MARIMO_PASSWORD_FILE` as a
+path to a protected, host-side secret file and `HF_TOKEN` as a protected
+runtime secret when private Hub access is needed. Keep the data volumes
+persistent across deployments. The SSH-forwarded `workbench.sh` flow below is
+only a local developer preview, not the public deployment path.
+
 ## Interactive local workbench (optional)
 
 Install the optional Marimo UI, then either run it on your local machine or
