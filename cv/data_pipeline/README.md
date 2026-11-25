@@ -40,9 +40,11 @@ uv run --extra test python -m pytest --cov=mgts_data_pipeline --cov-report=term-
 ## Containerized workbench (Compose and Dokploy)
 
 `compose.ml.yml` at the repository root is the dedicated container definition
-for the existing Marimo workbench. Its build context is only
+for the hosted Marimo editor. It runs authenticated `marimo edit` against the
+dataset workbench notebook, rather than serving the notebook in app-only
+`marimo run` mode. Its build context is only
 `cv/data_pipeline`; it installs the committed `uv.lock` with the optional UI
-and CPU inference extras and reuses the same CLI-backed form. The existing
+and CPU inference extras and starts with the same CLI-backed notebook. The existing
 `cv/ml/best.pt` checkpoint is not copied into the image: Compose bind-mounts a
 host artifact read-only at `/models/best.pt`. The default host source is
 `./cv/ml/best.pt`; set `MGTS_MODEL_FILE` to an absolute path for a
@@ -50,10 +52,20 @@ host-managed artifact. The app reads it only after photo-form submission and
 never downloads replacement weights. The container listens on port 8790
 inside its network, while the default host publishing is restricted to
 `127.0.0.1:8790`. Separate named volumes preserve `/data/archive`, `/data/hub`,
-and `/data/output`; set `MGTS_VOLUME_PREFIX` if a different deployment needs
-its own volume names. Starting the service serves the forms only—no dataset is
-fetched, normalized, validated, or trained, and no photo inference runs until
-a user explicitly submits the corresponding operation.
+`/data/notebooks`, and `/data/output`; set `MGTS_VOLUME_PREFIX` if a different
+deployment needs its own volume names. On first start, the entrypoint copies
+the bundled notebook into the writable `/data/notebooks` volume only when the
+file is absent. Existing notebook edits are preserved across container
+restarts, image rebuilds, and deployments; image updates do not replace the
+saved notebook.
+
+This editor is trusted code execution, not a sandbox: an editor can execute
+arbitrary Python as container UID/GID 10001 with access to mounted volumes,
+the model file, and runtime environment/secrets. Password authentication only
+controls login; grant access only to trusted collaborators. The stock notebook
+forms still require explicit submission, and startup only seeds the notebook
+and starts Marimo—it does not fetch, normalize, validate, train, or run photo
+inference.
 
 Before starting locally, provision a non-empty password file with a secure
 secret manager or editor at `.secrets/marimo_password`; this path is ignored by

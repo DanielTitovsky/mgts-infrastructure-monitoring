@@ -28,6 +28,9 @@ services:
         source: hub_cache
         target: /data/hub
       - type: volume
+        source: notebook_workspace
+        target: /data/notebooks
+      - type: volume
         source: normalized_output
         target: /data/output
       - type: bind
@@ -61,5 +64,7 @@ volumes:
     name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-archives
   hub_cache:
     name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-hub
+  notebook_workspace:
+    name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-notebooks
   normalized_output:
     name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-output

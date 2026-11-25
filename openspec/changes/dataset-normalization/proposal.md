@@ -61,6 +61,28 @@ contract; `docker compose config` validates the declarative service;
 `marimo check --strict` and focused pipeline tests pass; a bounded image build
 and authenticated text-only HTTP smoke do not trigger data work.
 
+### Hosted editor mode
+
+The Compose-hosted service runs the authenticated Marimo editor (`marimo edit`),
+not app mode (`marimo run`). It edits
+`/data/notebooks/dataset_workbench.py` on a separate writable named volume.
+When that file is absent, startup seeds it from the image's bundled notebook;
+subsequent starts and image updates must never overwrite an existing notebook.
+Run the editor as the existing non-root UID/GID 10001 and retain password-file
+authentication and startup-token log redaction. The notebook editor is trusted
+code execution with the service's access to its mounted data and runtime
+secrets, so grant access only to trusted collaborators; password authentication
+does not sandbox notebook code. Startup still performs no dataset or inference
+work.
+
+Acceptance: a focused entrypoint test verifies the `marimo edit` command,
+password-file option, host/port and headless options, and first-start-only
+notebook seeding while preserving edits on a later start. Compose tests verify
+the additional persistent notebook volume and non-root/authentication
+contract. Verify the installed Marimo CLI supports these editor/auth options;
+runtime proof is an authenticated text-only HTTP check plus a persisted edit
+across container recreation, with no browser or visual inspection.
+
 ## Optional photo inference
 
 Add one explicit-submit photo inference form to the optional Marimo workbench.

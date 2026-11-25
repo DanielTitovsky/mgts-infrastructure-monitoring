@@ -32,3 +32,10 @@
 Dokploy compose `UP_ySpCqfZRWZQAj-0c6O`, app `compose-connect-auxiliary-bus-t7dvpy`, on 2.56.97.211. Runtime source `198f1aa7d7cc856acb8efa40253582b0f8591577`. Exact source archive contains pipeline and existing checkpoint, no dataset copy. HTTPS edge uses pinned internal Caddy CA to port18444. Password form login and authenticated GET passed over trusted public HTTPS. Hosted `infer_photo` on the correctly named fixture above returned the same numeric detection and exact model hash. No browser/pixel checks were used.
 
 Initial runtime failures: Dokploy recursively changed mounted-secret owner to UID1001, conflicting with service UID10001; use read-only secret projection mode0444 inside host directory0700 and recreate service after correction (canonical secret remains0600). OpenCV lacked libxcb.so.1; image now installs libxcb1/libgl1/libglib2.0-0 and gates build on importing Ultralytics. Never reuse sanitized MCP config readback as write input.
+
+## Hosted editor candidate
+
+- Locked Marimo CLI reports version 0.25.2. `marimo edit --help` lists the `--host`, `--port`, `--headless`, `--token-password-file`, and `--trusted` options used by the container entrypoint.
+- `cd cv/data_pipeline && uv run --extra test python -m pytest tests/test_container_contract.py -q`: 6 passed. The entrypoint integration stubs verify editor mode and exact password-file argument, reject an empty password before launch, seed a new writable notebook, and preserve user edits after the bundled source changes. No password value is present in captured output.
+- `bash -n cv/data_pipeline/container-entrypoint.sh`, `docker compose -f compose.ml.yml config --quiet`, `marimo check --strict cv/data_pipeline/notebooks/dataset_workbench.py`, and `git diff --check` passed.
+- This candidate was not image-built or deployed here. Coordinator deployment/readback remains open: verify authenticated HTTP editor behavior and that notebook edits persist after container recreation, without browser or visual inspection.

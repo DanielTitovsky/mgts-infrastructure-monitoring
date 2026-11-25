@@ -20,7 +20,7 @@ COPY container-entrypoint.sh /usr/local/bin/marimo-container-entrypoint
 RUN uv sync --locked --no-dev --extra ui --extra inference \
     && groupadd --system --gid 10001 workbench \
     && useradd --system --uid 10001 --gid workbench --create-home --home-dir /home/workbench workbench \
-    && mkdir -p /data/archive /data/hub /data/output /models \
+    && mkdir -p /data/archive /data/hub /data/notebooks /data/output /models \
     && chown -R workbench:workbench /data /home/workbench \
     && chmod 0755 /usr/local/bin/marimo-container-entrypoint
 
