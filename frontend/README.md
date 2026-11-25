@@ -15,10 +15,12 @@ npm run dev
 
 The development server listens on `http://localhost:3000`. For a production build use `npm run build`; `npm run preview` serves the build locally. Run the focused frontend tests with `npm test`.
 
+The Docker image builds Nuxt's Nitro output and runs `node .output/server/index.mjs`; it does not run the development server. The production `/api/*` and `/uploads/*` proxy resolves its backend target when the server starts.
+
 ## FastAPI connection
 
 - Real API mode is the default. Browser requests use relative `/api/*` paths through the Nuxt proxy; SSR requests use `runtimeConfig.apiTarget`.
-- Set `API_PROXY_TARGET` to the FastAPI base with its `/api` suffix (default `http://127.0.0.1:3001/api`; Docker commonly uses `http://backend:8000/api`).
+- Set `API_PROXY_TARGET` to the FastAPI base with its `/api` suffix (default `http://127.0.0.1:3001/api`; Docker commonly uses `http://backend:8000/api`). In a Nitro deployment, `API_PROXY_TARGET` or the Nuxt runtime override `NUXT_API_TARGET` selects the target at runtime; this is not frozen to the local default during build.
 - The browser uses the existing HTTP Basic challenge; `/admin` redirects to `/admin/objects` rather than presenting an application login form. Browser API calls remain relative/same-origin and let the browser send its cached credentials normally.
 - SSR forwards the incoming `Authorization` header only to the configured internal API target. The frontend does not store Basic passwords or Bearer tokens in JavaScript, cookies, or local storage; Bearer JWTs remain supported by FastAPI for existing API clients.
 - HTTP Basic credential caching is controlled by the browser. The application cannot reliably clear those credentials or promise a 30-day browser session, so the UI has no misleading logout button.
@@ -39,6 +41,7 @@ For a production build that should run in demo mode, provide `NUXT_PUBLIC_DEMO_M
 ## Developer configuration
 
 `config.ts` owns editable local defaults, including `apiUrl` and `useMocks`.
-Nuxt consumes these defaults; `API_PROXY_TARGET` overrides the proxy target, and
-`NUXT_PUBLIC_DEMO_MODE` overrides the runtime mock switch in Docker/Dokploy.
+Nuxt consumes these defaults; `API_PROXY_TARGET` or `NUXT_API_TARGET` overrides
+the API/uploads proxy target, and `NUXT_PUBLIC_DEMO_MODE` overrides the runtime
+mock switch in Docker/Dokploy.
 Do not put credentials in this public frontend configuration.

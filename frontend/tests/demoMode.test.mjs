@@ -45,5 +45,5 @@ test('developer config supplies Nuxt defaults without removing runtime overrides
   assert.equal(config.apiUrl, 'http://localhost:3001/api')
   const nuxt = await readFile(new URL('../nuxt.config.ts', import.meta.url), 'utf8')
   assert.match(nuxt, /demoMode:\s*config\.useMocks/)
-  assert.match(nuxt, /process\.env\.API_PROXY_TARGET\s*\|\|\s*config\.apiUrl/)
+  assert.match(nuxt, /process\.env\.API_PROXY_TARGET\s*\|\|\s*process\.env\.NUXT_API_TARGET\s*\|\|\s*config\.apiUrl/)
 })

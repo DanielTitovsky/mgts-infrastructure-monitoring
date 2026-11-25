@@ -7,10 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 // локально — на uvicorn по умолчанию.
 // Nitro отрезает совпавший префикс (/api/) перед пересылкой,
 // поэтому в target должен остаться /api.
-const apiProxyTarget = process.env.API_PROXY_TARGET || config.apiUrl
-// Корень backend: оттуда отдаётся статика /uploads (результаты обработки ИИ).
-const backendOrigin = apiProxyTarget.replace(/\/api\/?$/, '')
-const isProduction = process.env.NODE_ENV === 'production'
+const apiProxyTarget = process.env.API_PROXY_TARGET || process.env.NUXT_API_TARGET || config.apiUrl
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-05-15',
@@ -53,28 +50,6 @@ export default defineNuxtConfig({
                 '/api/',
             ],
         },
-        // Production-сборка (nuxt build) тоже проксирует /api/* на backend.
-        // В dev-режиме используется devProxy ниже.
-        routeRules: isProduction
-            ? {
-                '/api/**': {
-                    proxy: `${apiProxyTarget}/**`,
-                },
-                '/uploads/**': {
-                    proxy: `${backendOrigin}/uploads/**`,
-                },
-            }
-            : {},
-        devProxy: {
-            "/api/" : {
-                target:  apiProxyTarget,
-                changeOrigin: true,
-            },
-            "/uploads/" : {
-                target:  `${backendOrigin}/uploads`,
-                changeOrigin: true,
-            }
-        }
     },
 
     css: [

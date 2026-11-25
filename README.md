@@ -2,6 +2,15 @@
 
 Система городских работников МГТС: **Nuxt**-фронтенд, **FastAPI**-бэкенд, **PostgreSQL**, объектное хранилище **S3/MinIO** и фоновый воркер для обработки фотографий через ИИ. Всё поднимается одной командой через Docker Compose.
 
+## Хакатонный стенд
+
+- Сайт: https://mgts.159.195.51.237.sslip.io/admin
+- Стандартное окно входа браузера: логин `admin`, пароль `osiris`.
+- ML/Marimo: развёртывание ещё выполняется; ссылка будет добавлена после проверки.
+- Фронтенд: [Draft PR #1](https://github.com/DanielTitovsky/mgts-infrastructure-monitoring/pull/1). ML: [Draft PR #2](https://github.com/DanielTitovsky/mgts-infrastructure-monitoring/pull/2).
+
+Это временные данные демодоступа, опубликованные по запросу владельца в приватном репозитории. Не использовать их для production.
+
 ## Быстрый старт
 
 ```bash

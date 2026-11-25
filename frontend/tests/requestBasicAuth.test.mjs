@@ -17,7 +17,7 @@ test('browser requests use same-origin credentials without frontend token storag
 })
 
 test('SSR forwards only the incoming Authorization header to the configured API target', () => {
-  assert.match(requestSource, /const apiTarget = String\(runtimeConfig\.apiTarget \|\| ''\)/)
+  assert.match(requestSource, /resolveApiTarget\(process\.env\.API_PROXY_TARGET, runtimeConfig\.apiTarget\)/)
   assert.match(requestSource, /const incomingAuthorization = import\.meta\.server && apiTarget\s*\? useRequestHeaders\(\['authorization'\]\)\.authorization\s*: undefined/)
   assert.match(requestSource, /if \(import\.meta\.server && apiTarget && incomingAuthorization && !hasAuthorization\)[\s\S]*?headers\.Authorization = incomingAuthorization/)
 })
