@@ -1,25 +1,11 @@
 <script setup lang="ts">
 import { useSakaiLayout } from '~/composables/sakai/useSakaiLayout'
 import { computed } from 'vue'
-import { useRequest } from '~/services/useRequest'
 import { findAdminSection } from './navigation'
 
 const route = useRoute()
-const router = useRouter()
 const { layoutConfig, toggleMenu, toggleDarkMode } = useSakaiLayout()
 const currentSection = computed(() => findAdminSection(route.path))
-
-async function logout() {
-  await useRequest('/api/logout', {
-    successMessage: 'Вы вышли из системы',
-    errorTitle: 'Не удалось выйти из системы',
-  })
-
-  // The FastAPI token remains in the existing cookie contract. Clear it even
-  // if logout failed so the user cannot remain in the protected workspace.
-  useCookie('token').value = null
-  await router.push('/admin')
-}
 </script>
 
 <template>
@@ -52,13 +38,6 @@ async function logout() {
       >
         <i :class="['pi', layoutConfig.darkTheme ? 'pi-sun' : 'pi-moon']" aria-hidden="true" />
       </button>
-      <Button
-        label="Выйти"
-        icon="pi pi-sign-out"
-        severity="secondary"
-        outlined
-        @click="logout"
-      />
     </div>
   </header>
 </template>

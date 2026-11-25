@@ -19,16 +19,14 @@ services:
       S3_SECRET_KEY: ${MGTS_STORAGE_PASSWORD:?required}
       JWT_SECRET: ${MGTS_JWT_SECRET:?required}
       AUTH_REQUIRED: 'true'
-      JWT_EXPIRES_MINUTES: '43200' # Hackathon: persistent login for 30 days
+      JWT_EXPIRES_MINUTES: '43200' # Existing Bearer API clients; browser Basic caching is user-agent controlled.
   frontend:
     extends: {file: compose.preview.yml, service: frontend}
-    environment:
-      NUXT_PUBLIC_API_TOKEN_HEADER: X-MGTS-Authorization
     ports: !reset []
   gateway:
     image: caddy:2.10.2-alpine
     labels:
-      mgts.gateway-config: admin-login-v1
+      mgts.gateway-config: browser-basic-v2
     environment:
       PREVIEW_PASSWORD_HASH: ${MGTS_PREVIEW_PASSWORD_HASH:?required}
     ports:
@@ -49,10 +47,7 @@ configs:
         basic_auth {
           admin {$$PREVIEW_PASSWORD_HASH}
         }
-        reverse_proxy frontend:3000 {
-          header_up Authorization {http.request.header.X-MGTS-Authorization}
-          header_up -X-MGTS-Authorization
-        }
+        reverse_proxy frontend:3000
       }
 volumes:
   db:

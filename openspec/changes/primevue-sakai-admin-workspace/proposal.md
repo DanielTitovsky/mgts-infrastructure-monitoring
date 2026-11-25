@@ -6,16 +6,20 @@ The existing admin screens use a minimal legacy layout that makes the object and
 
 ## Scope
 
-- Restyle the existing login, admin navigation, tables, forms, and map placeholder without replacing the current domain workflows.
-- Persist the existing browser JWT cookie across browser restarts until its token expiry, capped at 30 days, using a root path, SameSite=Lax, and Secure only over HTTPS.
+- Restyle the admin entry route, navigation, tables, forms, and map placeholder without replacing the current domain workflows.
+- Use the existing HTTP Basic challenge as the only browser login UI; `/admin` redirects to `/admin/objects` and the browser controls credential caching.
+- Pass the browser's same-origin Basic `Authorization` through to FastAPI, including SSR requests to the configured internal API target. Do not store Basic credentials or JWTs in frontend JavaScript, cookies, or local storage.
+- Keep FastAPI `AUTH_REQUIRED=true` support for Basic credentials checked through the existing user service, while preserving Bearer JWT authentication for existing API clients.
 - Keep real FastAPI requests as the default. Provide an explicit, opt-in in-memory demo mode for a backend-free walkthrough and clearly label its synthetic data.
 - Preserve existing authentication, API, and object-photo behavior.
 
 ## Out of scope
 
 - Choosing or implementing a map provider.
-- Backend/API or deployment changes.
+- Replacing the standard browser HTTP Basic dialog with a custom application login or logout flow.
 - Claiming that demo records or detections represent real monitoring results.
+
+The browser user agent controls how long HTTP Basic credentials remain cached; the application cannot guarantee a 30-day browser session.
 
 ## Accepted template correction
 Use the actual MIT-licensed primefaces/sakai-vue template, pinned to ec6b6ef53ad4fa7f2861277f50f2d9e236c40372 (5.0.0), as the layout/theme/spacing source. Preserve its layout SCSS and standard Tailwind/PrimeVue page recipes rather than a custom Sakai-inspired design. Adapt only routing/SSR and MGTS navigation/data. Keep Nuxt and developer config, existing FastAPI contracts, photo workflows, explicit demo mode and honest map placeholder. Remove the rejected bespoke shell/styles after mapping retained functionality. Preserve upstream license and record file provenance. No Hookify work.

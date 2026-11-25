@@ -109,7 +109,7 @@ test('Sakai layout state uses Nuxt request-scoped state instead of module-level 
   for (const label of ['Пользователи', 'Объекты', 'Дефекты', 'Статусы', 'Карта']) {
     assert.ok(navigation.includes(label), `navigation label ${label}`)
   }
-  assert.match(topbar, /Выйти/)
+  assert.doesNotMatch(topbar, /logout|Выйти|\/api\/logout/i)
   assert.match(adminLayout, /AppLayout/)
 })
 

@@ -25,7 +25,7 @@ async def login(payload: LoginRequest, session: SessionDep):
 @router.get("/auth/me", response_model=Envelope[UserRead])
 async def me(user: CurrentUser):
     if user is None:
-        raise AppError(401, "Требуется авторизация", "Передайте заголовок Authorization: Bearer <token>.")
+        raise AppError(401, "Требуется авторизация", "Передайте действующий заголовок Authorization.")
     return ok(user)
 
 

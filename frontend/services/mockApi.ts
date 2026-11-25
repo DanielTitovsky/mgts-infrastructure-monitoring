@@ -234,31 +234,6 @@ export async function mockRequest(url: string, options: MockOptions = {}) {
   const method = (options.method || 'GET').toUpperCase()
   const body = parseBody(options.body)
 
-  if (path === '/api/auth/login' && method === 'POST') {
-    const { username, password } = body
-
-    if (!username || !password) {
-      return fail('Неверные данные входа', 'Укажите имя пользователя и пароль.')
-    }
-
-    const user = users.find(item => item.username === username)
-
-    return ok({
-      token: 'mock-token',
-      user: user || {
-        id: 0,
-        username,
-        email: '',
-        phone: '',
-        role: 'operator'
-      }
-    })
-  }
-
-  if (path === '/api/logout') {
-    return ok(true)
-  }
-
   const segments = path.split('/').filter(Boolean)
   const collectionPath = `/${segments.slice(0, 2).join('/')}`
   const rowId = segments[2]

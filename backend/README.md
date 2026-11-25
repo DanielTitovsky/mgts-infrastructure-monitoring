@@ -2,7 +2,9 @@
 
 Базовый REST API на **FastAPI** с асинхронной работой с **PostgreSQL**
 (SQLAlchemy 2 + asyncpg). Реализует контракт, который уже использует фронтенд:
-пользователи, статусы, объекты инфраструктуры, дефекты и вход по JWT.
+пользователи, статусы, объекты инфраструктуры и дефекты. Защищённые маршруты
+поддерживают browser HTTP Basic через существующую базу пользователей и
+сохраняют Bearer JWT для API-клиентов.
 
 ## Быстрый старт
 
@@ -85,9 +87,9 @@ python worker.py
 
 | Метод | Путь | Описание |
 | --- | --- | --- |
-| `POST` | `/api/auth/login` | Вход по `username`/`password`, возвращает JWT и пользователя |
-| `GET` | `/api/auth/me` | Текущий пользователь по `Authorization: Bearer <token>` |
-| `GET`/`POST` | `/api/logout` | Заглушка: токен stateless, клиент удаляет его сам |
+| `POST` | `/api/auth/login` | Вход по `username`/`password`, возвращает Bearer JWT для API-клиентов |
+| `GET` | `/api/auth/me` | Текущий пользователь по `Authorization: Basic ...` или `Authorization: Bearer <token>` |
+| `GET`/`POST` | `/api/logout` | Заглушка для stateless Bearer API-клиентов; браузерный HTTP Basic кэш она не очищает |
 | `GET`/`POST` | `/api/users`, `/api/users/{id}` | Пользователи |
 | `PUT`/`DELETE` | `/api/users/{id}` | Обновление и удаление |
 | `GET`/`POST` | `/api/statuses`, `/api/statuses/{id}` | Статусы |
@@ -219,7 +221,7 @@ worker.py  -- раз в WORKER_POLL_INTERVAL секунд берёт один о
 | `DB_ECHO` | `false` | Логировать SQL |
 | `JWT_SECRET` | `dev-secret-change-me` | Секрет подписи токена (задать в проде) |
 | `JWT_EXPIRES_MINUTES` | `720` | Время жизни токена |
-| `AUTH_REQUIRED` | `false` | Требовать токен для CRUD-эндпоинтов |
+| `AUTH_REQUIRED` | `false` | Требовать валидный Basic или Bearer заголовок для CRUD-эндпоинтов |
 | `S3_ENDPOINT` | `http://localhost:9000` | Адрес MinIO/S3 (в Docker — `http://minio:9000`) |
 | `S3_ACCESS_KEY` | `minioadmin` | Логин MinIO |
 | `S3_SECRET_KEY` | `minioadmin` | Пароль MinIO |
@@ -236,10 +238,10 @@ worker.py  -- раз в WORKER_POLL_INTERVAL секунд берёт один о
 | `WORKER_STALE_MINUTES` | `5` | Таймаут зависшей задачи, мин |
 | `UPLOADS_DIR` | `<корень>/uploads` | Каталог `/uploads/raw` и `/uploads/processed` |
 
-`AUTH_REQUIRED=false` оставлен специально: у фронтенда пока нет экрана входа,
-поэтому таблицы должны открываться без токена. После добавления формы входа
-достаточно поставить `AUTH_REQUIRED=true` — защита уже подключена ко всем
-CRUD-роутерам.
+Локальный preview оставляет `AUTH_REQUIRED=false`, чтобы работать без отдельного
+gateway. В hosted Compose `AUTH_REQUIRED=true`: browser HTTP Basic проверяется
+через существующий `user_service.authenticate`, а Bearer JWT остаётся доступен
+для API-клиентов. Форма входа и frontend JWT-cookie не используются.
 
 ## Дальше по плану
 

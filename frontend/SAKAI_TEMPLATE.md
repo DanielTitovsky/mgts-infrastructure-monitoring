@@ -28,8 +28,13 @@ kept.
 - `AppMenu.vue` and `AppMenuItem.vue` use `NuxtLink` and the existing MGTS
   routes. They retain the accessible navigation name, active route state, and
   responsive Sakai menu behavior.
-- `AppTopbar.vue` replaces demo actions with the MGTS label, theme toggle, and
-  the existing logout request/token-cookie behavior.
+- `AppTopbar.vue` replaces demo actions with the MGTS label and theme toggle;
+  there is no application logout action because HTTP Basic credentials are
+  browser-managed and cannot be reliably cleared by the frontend.
+- `/admin` redirects to `/admin/objects`; the hosted Caddy Basic challenge is
+  the only browser login UI. Browser requests use same-origin URLs and SSR
+  forwards the incoming authorization header only to the configured internal
+  API target.
 - `useSakaiLayout.ts` ports the source layout state to Nuxt `useState`, avoiding
   module-level reactive state shared between SSR requests. Browser-only APIs
   are called only from client interactions.
@@ -38,8 +43,9 @@ kept.
   output remain unchanged.
 - `nuxt.config.ts` loads the upstream Tailwind v4 source and Vite plugin with
   the PrimeVue utility plugin, uses the default Aura preset, and loads the
-  upstream Lato font link. The API proxy, developer defaults, auth-header
-  runtime setting, and demo-mode configuration remain independent of the shell.
+  upstream Lato font link. The API proxy, developer defaults, server-only
+  authorization forwarding, and demo-mode configuration remain independent of
+  the shell.
 
 ## Verification
 

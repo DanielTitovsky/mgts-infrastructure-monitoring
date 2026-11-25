@@ -19,7 +19,9 @@ The development server listens on `http://localhost:3000`. For a production buil
 
 - Real API mode is the default. Browser requests use relative `/api/*` paths through the Nuxt proxy; SSR requests use `runtimeConfig.apiTarget`.
 - Set `API_PROXY_TARGET` to the FastAPI base with its `/api` suffix (default `http://127.0.0.1:3001/api`; Docker commonly uses `http://backend:8000/api`).
-- Authentication keeps the existing `token` cookie and `Authorization: Bearer` request contract.
+- The browser uses the existing HTTP Basic challenge; `/admin` redirects to `/admin/objects` rather than presenting an application login form. Browser API calls remain relative/same-origin and let the browser send its cached credentials normally.
+- SSR forwards the incoming `Authorization` header only to the configured internal API target. The frontend does not store Basic passwords or Bearer tokens in JavaScript, cookies, or local storage; Bearer JWTs remain supported by FastAPI for existing API clients.
+- HTTP Basic credential caching is controlled by the browser. The application cannot reliably clear those credentials or promise a 30-day browser session, so the UI has no misleading logout button.
 - Object photos keep the existing `POST`/`DELETE /api/infrastructure-objects/{id}/photo` contract. The object form validates JPEG, PNG and WebP files up to 5 MB, supports replacement/removal, and displays processing status and annotated output when returned by the API.
 
 ## Isolated preview demo
