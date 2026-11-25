@@ -1,6 +1,7 @@
 import { useNotifications } from '~/composables/useNotifications'
 import { mockRequest } from '~/services/mockApi'
 import { isDemoModeEnabled } from '~/services/demoMode'
+import { resolveApiTarget } from '~/utils/apiProxy'
 
 type RequestBody = Record<string, unknown> | string | FormData
 
@@ -66,7 +67,9 @@ export function useRequest(url: string, options: Options = {}) {
   // внутренние вызовы $fetch. Идём в backend напрямую.
   const runtimeConfig = useRuntimeConfig()
   let requestUrl = url
-  const apiTarget = String(runtimeConfig.apiTarget || '').replace(/\/+$/, '')
+  const apiTarget = (import.meta.server
+    ? resolveApiTarget(process.env.API_PROXY_TARGET, runtimeConfig.apiTarget)
+    : '').replace(/\/+$/, '')
   const incomingAuthorization = import.meta.server && apiTarget
     ? useRequestHeaders(['authorization']).authorization
     : undefined

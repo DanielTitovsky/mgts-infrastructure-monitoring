@@ -23,3 +23,6 @@ The browser user agent controls how long HTTP Basic credentials remain cached; t
 
 ## Accepted template correction
 Use the actual MIT-licensed primefaces/sakai-vue template, pinned to ec6b6ef53ad4fa7f2861277f50f2d9e236c40372 (5.0.0), as the layout/theme/spacing source. Preserve its layout SCSS and standard Tailwind/PrimeVue page recipes rather than a custom Sakai-inspired design. Adapt only routing/SSR and MGTS navigation/data. Keep Nuxt and developer config, existing FastAPI contracts, photo workflows, explicit demo mode and honest map placeholder. Remove the rejected bespoke shell/styles after mapping retained functionality. Preserve upstream license and record file provenance. No Hookify work.
+
+## Current container-runtime correction
+The frontend image must build and serve the Nuxt/Nitro production output; `npm run dev` remains a local development command only. Production API and `/uploads` forwarding must resolve the configured backend at runtime through `API_PROXY_TARGET` or Nuxt's `NUXT_API_TARGET` runtime override. Do not bake the developer `localhost` target into production proxy routes. Keep the configured `/api` base path, original request method/body/query/headers, SSR authorization forwarding, and existing same-origin browser API contract.
