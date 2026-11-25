@@ -1,0 +1,30 @@
+- [x] Inspect repository and establish isolated task worktree.
+- [x] Implement CLI and six source adapters with unit/integration/CLI tests.
+- [x] Record source-specific class mappings, format and risk policies.
+- [x] Run focused tests: 61 passed, 84.56% coverage.
+- [x] Verify real fresh-root Broken Poles fetch and no-token cache reuse.
+- [x] Normalize/validate real Broken Poles: 533 images, 745 boxes, 71 rejected records; train-only, not evaluation-ready.
+- [x] Document commands and limitations including known Powerline duplicate-label blocker.
+- [x] Correct fresh-machine ZIP fetching and Parquet class-name provenance.
+- [x] Correct portable YAML root resolution with regression test (red then green).
+- [x] Resolve publishing preference: the initial local-only preference was superseded by explicit WIP-PR authorization; publication is coordinator-owned.
+- [x] Complete final PD-Defect smoke: 1,801 images / 2,182 annotations, valid=true; record evidence.
+- [x] Prepare verified focused local commit; this implementation worktree remains unpushed and PR publication is coordinator-owned.
+- [x] Add optional Marimo workbench over existing CLI, with explicit-submit-only execution and safe starter defaults.
+- [x] Test submit gating, CLI argument mapping, configuration errors, and secret-safe launcher behavior; verify the Marimo app and local text-only smoke.
+- [x] Document local optional install/launch and current dataset risks in the governing pipeline guide.
+- [x] Start authenticated server-loopback preview in a dedicated session; verify password login, PID/readiness, no credential in argv/environment/output, and laptop-forward HTTP/text without exposing a public port.
+- [x] Coordinator: publish the authorized Draft PR for the Marimo workbench candidate and verify the canonical PR identity; candidate head `2d2efb32e000bbe1458c4f227ba2ed8b10237e83` was read back from the remote branch, PR API, and commits list.
+- [x] Add the locked, non-root Marimo container image and separate Compose service with loopback-by-default host publishing and persistent archive/Hub/output volumes.
+- [x] Configure required password-file authentication, protected Hugging Face runtime configuration, startup log redaction, and no automatic pipeline work; cover the contract with focused tests.
+- [x] Document local container operation and the exact Dokploy Compose source/service-port path without changing the local-only SSH preview.
+- [x] Validate Compose configuration, focused tests (77 passed; 88% coverage), strict Marimo check, bounded image build, and authenticated text-only HTTP smoke: healthy as UID 10001; loopback-bound; login GET 200, password POST 302, authenticated page GET 200; all three data volumes remained empty; no password in process args/environment or logs; startup access-token URL redacted.
+- [x] Add optional CPU-only, explicit-submit photo inference with an existing read-only checkpoint; do not train or download weights.
+- [x] Test inference input guards, checkpoint task/class metadata, class/confidence/box result mapping with a mocked predictor, and verify Marimo submit gating.
+- [x] Run one bounded CPU prediction using the exact existing checkpoint and local repository image; capture numeric-only output with no visual interpretation or prediction artifact writes.
+- [x] Document local/container model path setup, exact checkpoint provenance/hash and generic class limitation, optional dependency setup, and unresolved license/data provenance.
+
+- [x] Deploy authenticated Marimo through Dokploy, prove hosted model inference and password login using HTTP (no browser), then put both demo URLs/access details in both branch READMEs and PR bodies.
+- [x] Switch the Compose-hosted service to authenticated `marimo edit` with a writable named notebook volume; seed the bundled notebook only when absent, retain non-root execution, and test auth/command/persistence.
+- [x] Update operator/user docs to describe the hosted editor, durable notebook volume, and trusted-editor arbitrary-code-execution boundary.
+- [x] Coordinator: redeploy the exact Compose candidate through Dokploy and verify HTTP authentication/editor mode plus notebook edit persistence across container recreation (no browser/visual inspection).

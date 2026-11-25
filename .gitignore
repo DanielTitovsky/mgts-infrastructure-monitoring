@@ -1,7 +1,9 @@
 .env
 .env.*
 !.env.example
+/.secrets/
 .venv
 .idea
 __pycache__/
 *.py[cod]
+/cv/data_pipeline/notebooks/__marimo__/

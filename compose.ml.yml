@@ -1,0 +1,70 @@
+services:
+  workbench:
+    build:
+      context: ./cv/data_pipeline
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    expose:
+      - "8790"
+    ports:
+      - "${MARIMO_PUBLISH_HOST:-127.0.0.1}:${MARIMO_PUBLISH_PORT:-8790}:8790"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      MARIMO_PASSWORD_FILE: /run/secrets/marimo_password
+      MARIMO_PORT: "8790"
+      MGTS_DATA_ARCHIVE_ROOT: /data/archive
+      MGTS_DATA_HUB_ROOT: /data/hub
+      MGTS_DATA_OUTPUT_ROOT: /data/output
+      MGTS_MODEL_PATH: /models/best.pt
+    secrets:
+      - source: marimo_password
+        target: marimo_password
+    volumes:
+      - type: volume
+        source: archive_data
+        target: /data/archive
+      - type: volume
+        source: hub_cache
+        target: /data/hub
+      - type: volume
+        source: notebook_workspace
+        target: /data/notebooks
+      - type: volume
+        source: normalized_output
+        target: /data/output
+      - type: bind
+        source: ${MGTS_MODEL_FILE:-./cv/ml/best.pt}
+        target: /models/best.pt
+        read_only: true
+        bind:
+          create_host_path: false
+    user: "10001:10001"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8790/auth/login', timeout=2).read()"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+secrets:
+  marimo_password:
+    file: ${MARIMO_PASSWORD_FILE:-.secrets/marimo_password}
+
+volumes:
+  archive_data:
+    name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-archives
+  hub_cache:
+    name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-hub
+  notebook_workspace:
+    name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-notebooks
+  normalized_output:
+    name: ${MGTS_VOLUME_PREFIX:-mgts-dataset-workbench}-output
