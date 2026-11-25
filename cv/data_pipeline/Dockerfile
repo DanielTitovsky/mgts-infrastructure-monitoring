@@ -24,6 +24,12 @@ RUN uv sync --locked --no-dev --extra ui --extra inference \
     && chown -R workbench:workbench /data /home/workbench \
     && chmod 0755 /usr/local/bin/marimo-container-entrypoint
 
+# OpenCV's wheel needs these shared libraries even for CPU-only inference.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libxcb1 libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && uv run --no-sync python -c "from ultralytics import YOLO"
+
 USER 10001:10001
 EXPOSE 8790
 ENTRYPOINT ["/usr/local/bin/marimo-container-entrypoint"]
