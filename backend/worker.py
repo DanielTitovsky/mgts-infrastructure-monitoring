@@ -48,6 +48,7 @@ from app.core.processing import (
 from app.db.session import SessionLocal, dispose_engine
 from app.models import Defect, InfrastructureObject as Obj, Status
 from app.models.infrastructure_object import PHOTO_KEY_PREFIX
+from app.services.cabinet_detector import detect_cabinets, draw_cabinets
 from app.services.cv_logic import (
     CLASS_RULES,
     REQUIRED_STATUSES,
@@ -117,7 +118,12 @@ def analyze_image(
                 )
             )
 
-    if not cv2.imwrite(str(save_path), result.plot()):
+    annotated = result.plot()
+    if not detections:
+        detections = detect_cabinets(result.orig_img)
+        draw_cabinets(annotated, detections)
+
+    if not cv2.imwrite(str(save_path), annotated):
         raise RuntimeError(f"Не удалось сохранить обработанное фото: {save_path}")
 
     return detections, gps_from_image(source)

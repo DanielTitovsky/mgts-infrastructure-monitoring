@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu 
         torch==2.15.0 torchvision==0.29.2
 RUN pip install --no-cache-dir -r requirements-worker.txt
 
+# Cabinet detector dependencies follow the cached legacy CPU environment.
+RUN pip install --no-cache-dir transformers==5.1.0 && python -c "from transformers import GroundingDinoForObjectDetection, AutoProcessor"
+
 COPY backend/app ./app
 COPY backend/worker.py backend/main.py backend/seed.py ./
 

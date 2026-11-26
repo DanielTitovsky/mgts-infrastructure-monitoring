@@ -40,3 +40,9 @@ The `odn_pole` class SHALL map to a support-object detection without creating a 
 - **WHEN** the existing checkpoint processes a cabinet photo
 - **THEN** results are described only according to the checkpoint's actual `Broken`, `Good`, `Lose`, `Uncovered`, and pole/hardware class metadata
 - **AND** no cabinet-specific conclusion is claimed
+
+### Requirement: Identify cabinets absent from the legacy checkpoint
+With cabinet localization enabled, the worker SHALL use a locally pinned cabinet detector on incoming images and draw its real labeled box proposals without declaring a defect from the object box.
+#### Scenario: Cabinet localization without confirmed damage
+- **WHEN** the legacy detector fails to recognize a cabinet and the cabinet detector finds one
+- **THEN** the output JPEG shows a labeled object box and the inspection status is check_required, not ok.

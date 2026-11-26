@@ -11,3 +11,4 @@
 - [ ] 2.3 Run focused backend tests and OpenSpec validation, inspect the exact diff, and prepare the change's Draft PR; record that runtime processing remains unverified until the coordinator deploys it.
 
 Verification: `uv run --with-requirements requirements.txt --with httpx -- python -m unittest discover -s tests -v` passed 18 tests. Dummy-variable `docker compose -f compose.dokploy.yml config --format json` confirms the worker uses the default network, `http://minio:9000`, no published ports, the existing `uploads` volume, and a read-only exact checkpoint mount. `openspec validate dokploy-worker --strict` passed. No Dokploy deployment or production object processing is claimed here.
+- [ ] Enable the pinned cabinet detector in the hosted resident worker, verify a real queue item, processing status, and non-empty annotated output. Keep the original YOLO branch for existing assets.

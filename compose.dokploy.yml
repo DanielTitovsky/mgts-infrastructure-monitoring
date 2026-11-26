@@ -37,9 +37,18 @@ services:
       S3_BUCKET: mgts-preview
       UPLOADS_DIR: /app/uploads
       WEIGHTS_PATH: /weights/2-version.pt
+      CABINET_DETECTOR_PATH: /models/cabinet-detector
+      OMP_NUM_THREADS: "2"
+      MKL_NUM_THREADS: "2"
+      HF_HUB_OFFLINE: "1"
     volumes:
       - uploads:/app/uploads
       - ./cv/ml/yolo-v/2-version.pt:/weights/2-version.pt:ro
+      - type: bind
+        source: ${MGTS_CABINET_MODEL_DIR:?required}
+        target: /models/cabinet-detector
+        read_only: true
+        bind: {create_host_path: false}
     depends_on:
       db:
         condition: service_healthy
