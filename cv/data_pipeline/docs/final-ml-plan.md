@@ -119,3 +119,17 @@ recall 78,0%, F1 82,1%. Ещё 13 фото ошиблись подтипом п�
 в правильную очередь. Per-class precision / recall / F1: ЛКП 47,1 / 40,0 /
 43,2%; МП 55,0 / 52,4 / 53,7%; норма 62,5 / 75,0 / 68,2%. Это метрики
 одного классификатора снимков, а не mAP детектора и не метрики маршрута.
+
+### Повторить измерение
+
+Из корня репозитория, при доступных manifest/фотографиях и доверенном локальном checkpoint:
+
+```bash
+uv run --project cv/data_pipeline --extra inference python -m mgts_data_pipeline.cabinet_baseline build /path/mgts-final/final-materials.json /new/path/reference.json cv/ml/best.pt
+uv run --project cv/data_pipeline --extra inference python -m mgts_data_pipeline.cabinet_baseline evaluate /new/path/reference.json --top-k 5
+```
+
+В редакторе уже подключён готовый индекс. Ничего строить для демонстрации
+не требуется. Для нового эксперимента укажите **другой** путь, чтобы не
+перезаписать готовый индекс. На новом кадре модель предлагает похожие
+эталоны, класс и ручную проверку; образцы МГТС сравниваются отдельно от их исходных подписей.

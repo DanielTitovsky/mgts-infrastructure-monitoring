@@ -32,9 +32,10 @@
 
 ## Final ML workspace
 - [x] Read final DOCX and inventory supplied ZIP artifacts without pixel interpretation; record actual files/classes/labels and dataset suitability.
-- [ ] Replace CLI-centric notebook with editable ML photo/label review, visible normalization ambiguities, original-versus-prediction overlays and explicit inference controls.
-- [ ] Provide a bounded reproducible training recipe/config with honest holdout/leakage/class semantics; no automatic expensive training.
+- [x] Replace CLI-centric home with cabinet photo/label review, visible ambiguity, predicted labels and photo exemplars. The final data have image labels, not boxes: do not fabricate spatial overlays.
+- [x] Provide a bounded reproducible training recipe/config with honest holdout/leakage/class semantics; no automatic expensive training.
 - [x] Keep prior persisted notebook intact and publish revised research notebook as a new discoverable hosted entrypoint.
-- [ ] Run unit/integration checks and strict notebook validation without browser/vision.
-- [ ] Commit/push existing PR2, verify canonical SHA, update its description if authorized, deploy via Dokploy and verify authenticated notebook/code/persistent state.
-- [ ] Verify the default editor serves the cabinet notebook with code hidden on Markdown/widgets/output, first photo visible and selection reactive.
+- [x] Run unit/integration checks and strict notebook validation without browser/vision.
+- [x] Push the correction to existing PR2, verify canonical SHA, deploy via Dokploy and verify authenticated notebook/code/persistent state. Existing PR description was not modified: GitHub-write authorization was denied; the access links already exist there.
+- [x] Verify the default editor serves the cabinet notebook with code hidden on Markdown/widgets/output, first photo visible and selection reactive.
+- [ ] Optional, time-boxed: verify native Marimo AI with the existing CLIProxy, safe authentication and only provider-supported selectable models. Do not hold up the standalone ML demo or send organizer images to external AI automatically.

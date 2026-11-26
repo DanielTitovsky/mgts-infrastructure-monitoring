@@ -57,3 +57,6 @@ not prove the right notebook is open: after data promotion the authenticated
 root still named /data/notebooks/dataset_workbench.py. Check the served
 marimo-filename AND the downloaded notebook source against the candidate
 after switching to the new filename. Never overwrite the previous saved notebook.
+
+- Candidate `8a7b1da46cf295b633c4ad066cd3bc055655935b`, Dokploy deployment `Ft7yIEabmBOUjrBAYVZLl`. Password-authenticated HTTPS / returns /data/notebooks/ml_research.py; downloaded source SHA-256 `ffabea49e84f54698cf1817e04a25fb730187f61e1fd815bd19dde9dee171d57` matched the candidate. Cell source is hidden by default, notebook remains editable. Export with the real manifest emitted one bounded PNG on initial render with selector and source labels. No browser or pixel interpretation.
+- 158 tests passed (87% total coverage). Running container read 62 manifest rows and the first 4608×3456 image; grouped evaluation calculated three-class macro-F1 0.55027866 using the versioned reference index. Digest of the in-volume index `ce89ff86ddedb422e86e68ea8c3fd4e23c9c78c8439a3cc326c16e371520c313`. Archive volume unchanged; no photos or index were committed. Output CSV has 61 held-out predictions plus the unlabelled item explicitly excluded.
