@@ -18,13 +18,13 @@ REPOSITORY_ROOT = Path(__file__).parents[3]
 def _container_entrypoint_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path, dict[str, str]]:
     pipeline_root = REPOSITORY_ROOT / "cv" / "data_pipeline"
     source = tmp_path / "bundled.py"
-    notebook = tmp_path / "persistent" / "dataset_workbench.py"
+    notebook = tmp_path / "persistent" / "ml_research.py"
     script = (pipeline_root / "container-entrypoint.sh").read_text(encoding="utf-8")
     script = script.replace(
-        'NOTEBOOK_SOURCE="/app/notebooks/dataset_workbench.py"',
+        'NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"',
         f"NOTEBOOK_SOURCE={shlex.quote(str(source))}",
     ).replace(
-        'NOTEBOOK_PATH="/data/notebooks/dataset_workbench.py"',
+        'NOTEBOOK_PATH="/data/notebooks/ml_research.py"',
         f"NOTEBOOK_PATH={shlex.quote(str(notebook))}",
     )
     test_entrypoint = tmp_path / "container-entrypoint.sh"
@@ -124,8 +124,8 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
     assert "--host 0.0.0.0" in entrypoint
     assert "marimo edit \"$NOTEBOOK_PATH\"" in entrypoint
     assert '--token-password-file "$MARIMO_PASSWORD_FILE"' in entrypoint
-    assert 'NOTEBOOK_PATH="/data/notebooks/dataset_workbench.py"' in entrypoint
-    assert 'NOTEBOOK_SOURCE="/app/notebooks/dataset_workbench.py"' in entrypoint
+    assert 'NOTEBOOK_PATH="/data/notebooks/ml_research.py"' in entrypoint
+    assert 'NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"' in entrypoint
     assert "cp --no-clobber" in entrypoint
     assert "access_token=)[^&[:space:]]+" in entrypoint
     assert "fetch" not in entrypoint and "normalize" not in entrypoint
@@ -137,11 +137,15 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
 def test_container_entrypoint_authenticates_editor_and_preserves_user_notebook(tmp_path: Path) -> None:
     test_entrypoint, source, notebook, secret, args_file, env = _container_entrypoint_fixture(tmp_path)
 
+    legacy = notebook.parent / "dataset_workbench.py"
+    legacy.parent.mkdir(parents=True)
+    legacy.write_text("existing collaborator edits", encoding="utf-8")
     source.write_text("starter notebook", encoding="utf-8")
     result = subprocess.run(["bash", str(test_entrypoint)], env=env, capture_output=True, text=True)
 
     assert result.returncode == 0, result.stderr
     assert notebook.read_text(encoding="utf-8") == "starter notebook"
+    assert legacy.read_text(encoding="utf-8") == "existing collaborator edits"
     assert args_file.read_text(encoding="utf-8").splitlines() == [
         "edit",
         str(notebook),

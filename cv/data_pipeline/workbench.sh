@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
 PROJECT_ROOT="$(dirname -- "$SCRIPT_PATH")"
-NOTEBOOK="$PROJECT_ROOT/notebooks/dataset_workbench.py"
+NOTEBOOK="$PROJECT_ROOT/notebooks/ml_research.py"
 SECRET_FILE="/home/iter/.kiro/secrets.env"
 DOTENV_LOADER="/home/iter/projects/iter-private-setup/scripts/load-dotenv.sh"
 PORT="${MGTS_WORKBENCH_PORT:-8790}"
@@ -34,7 +34,7 @@ owns_pid() {
   local pid="$1" command_line
   [[ -r "/proc/$pid/cmdline" ]] || return 1
   command_line="$(tr '\0' ' ' < "/proc/$pid/cmdline")"
-  [[ "$command_line" == *"marimo"* && "$command_line" == *"dataset_workbench.py"* ]]
+  [[ "$command_line" == *"marimo"* && "$command_line" == *"ml_research.py"* ]]
 }
 
 listener_pid() {
@@ -69,7 +69,7 @@ serve() {
   unset MARIMO_WORKBENCH_PASSWORD
   umask 077
   printf '%s\n' "$$" > "$PID_FILE"
-  exec uv run --project "$PROJECT_ROOT" --extra ui marimo run "$NOTEBOOK" \
+  exec uv run --project "$PROJECT_ROOT" --extra ui marimo edit "$NOTEBOOK" \
     --host 127.0.0.1 --port "$PORT" --token-password-file - --headless \
     > >(sed --unbuffered --regexp-extended 's/(access_token=)[^&[:space:]]+/\1[REDACTED]/g') 2>&1 \
     <<<"$password"

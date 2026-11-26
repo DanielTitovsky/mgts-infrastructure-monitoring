@@ -108,3 +108,28 @@ numeric detection output without interpreting pixels, training, or writing
 prediction artifacts. Document model hash, class/task limitations, read-only
 mount/configuration, CPU-only install, and the absence of recorded model/data
 license provenance. No model binaries are added.
+
+
+## Final ML research workbench (2026-11-26)
+
+The final brief supplied by the user supersedes the earlier generic data-CLI
+panel as the main notebook experience. The notebook is a trusted editable ML
+workspace: inspect photos and original/normalized boxes, make class-mapping
+and exclusion decisions explicit, compare local-checkpoint predictions against
+labels, and prepare a reproducible training experiment. Mechanical fetch and
+conversion remain supported by the existing CLI, not the main notebook form.
+The existing odn_pole checkpoint localizes poles only; never infer damage or
+repair urgency from confidence alone. Final outputs must distinguish object,
+observed condition, and check/repair recommendation; unavailable evidence is
+unknown/requires review, not healthy by default.
+
+Use supplied final task DOCX as requirements provenance and inventory both ZIP
+attachments without interpreting image pixels or running embedded content.
+Do not commit images, archives, or training outputs. Human users may view
+photos in the notebook; agent verification remains text/HTTP/numeric only.
+Never silently replace user-edited persisted notebooks: publish this revised
+bundled workspace under a new explicit filename/version, retain the old file,
+and point the hosted editor at the new file. No training/download/normalization
+on import, opening the page, or changing controls. Training must be explicit,
+use a trusted existing checkpoint, keep sources/classes separate unless a human
+approves mappings, and keep evaluation split leakage visible.

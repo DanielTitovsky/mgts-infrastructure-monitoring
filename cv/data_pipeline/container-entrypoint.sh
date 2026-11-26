@@ -3,8 +3,8 @@ set -euo pipefail
 
 MARIMO_PASSWORD_FILE="${MARIMO_PASSWORD_FILE:-/run/secrets/marimo_password}"
 PORT="${MARIMO_PORT:-8790}"
-NOTEBOOK_SOURCE="/app/notebooks/dataset_workbench.py"
-NOTEBOOK_PATH="/data/notebooks/dataset_workbench.py"
+NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"
+NOTEBOOK_PATH="/data/notebooks/ml_research.py"
 
 if [[ ! -r "$MARIMO_PASSWORD_FILE" || ! -s "$MARIMO_PASSWORD_FILE" ]]; then
   printf 'required Marimo password secret file is missing or empty\n' >&2

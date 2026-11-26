@@ -273,3 +273,18 @@ defect detection, and powerline component labels stay in their own vocabulary.
   labels, unsafe links, or invalid YAML/JSON metadata.
 
 Pass an **absolute** path to the generated `data.yaml` to Ultralytics. The YAML intentionally omits `path` so its own directory is the dataset root, rather than a global Ultralytics datasets directory. Train-only outputs still require a separately prepared held-out validation split before normal training/evaluation.
+
+
+## Финальный ML-workspace
+
+Актуальный вход: **редактор `notebooks/ml_research.py`**, а не панель CLI.
+См. [фактический состав материалов и план обучения](docs/final-ml-plan.md).
+На стенде `MGTS_FINAL_MANIFEST` указывает на
+`/data/archive/mgts-final/final-materials.json`; фото не лежат в Git.
+Сначала исследуются выданные РЩ/ТКШ, их исходные состояния и описания.
+Общая нормализация/скачивание остаются командами `mgts-datasets`.
+
+Контейнер открывает `/data/notebooks/ml_research.py`. При первом запуске
+копируется новый bundled notebook; старый `/data/notebooks/dataset_workbench.py`
+и пользовательские правки остаются нетронутыми. Для изменения сохранённого
+ноутбука используйте редактор; обновление образа не перезаписывает его.
