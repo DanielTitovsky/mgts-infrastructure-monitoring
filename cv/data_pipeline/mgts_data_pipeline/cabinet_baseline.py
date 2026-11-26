@@ -315,6 +315,7 @@ def build_reference_index(
     checkpoint = checkpoint.resolve()
     checkpoint_digest = _sha256_file(checkpoint)
     manifest_file = Path(manifest_path).expanduser().resolve()
+    manifest_digest = _sha256_file(manifest_file)
     validated = _manifest_records(manifest_file)
     # Samples marked unknown are not valid references. A label remains eligible only
     # when both targets have verified values, keeping retrieval votes interpretable.
@@ -360,6 +361,7 @@ def build_reference_index(
         "provenance": {
             "checkpoint_path": str(checkpoint),
             "checkpoint_sha256": checkpoint_digest,
+            "manifest_sha256": manifest_digest,
             "checkpoint_task": "detect",
             "feature_method": "Ultralytics YOLO.embed, device=cpu, imgsz=640",
             "detector_outputs_used": False,

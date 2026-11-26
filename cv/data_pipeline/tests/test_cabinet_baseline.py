@@ -6,8 +6,9 @@ import json
 from pathlib import Path
 
 import pytest
-from mgts_data_pipeline import cabinet_baseline as baseline
 from PIL import Image
+
+from mgts_data_pipeline import cabinet_baseline as baseline
 
 
 class FakeEmbedder:
@@ -130,6 +131,10 @@ def test_build_index_uses_only_local_embedder_records_provenance_and_refuses_ima
     assert (
         index["provenance"]["checkpoint_sha256"]
         == hashlib.sha256(b"trusted local checkpoint").hexdigest()
+    )
+    assert (
+        index["provenance"]["manifest_sha256"]
+        == hashlib.sha256((tmp_path / "final-materials.json").read_bytes()).hexdigest()
     )
     assert len(index["records"]) == 2
     assert all(len(record["embedding"]) == 4 for record in index["records"])
