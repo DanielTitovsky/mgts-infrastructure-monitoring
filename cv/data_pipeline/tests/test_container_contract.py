@@ -37,6 +37,12 @@ def _container_entrypoint_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Pat
         encoding="utf-8",
     )
     marimo_stub.chmod(0o755)
+    python_stub = stub_dir / "python"
+    python_stub.write_text(
+        '#!/bin/sh\nprintf \'%s\\n\' "$@" > "$MARIMO_AI_CONFIG_ARGS_FILE"\n',
+        encoding="utf-8",
+    )
+    python_stub.chmod(0o755)
     secret = tmp_path / "password"
     secret.write_text("not-a-real-password\n", encoding="utf-8")
     args_file = tmp_path / "marimo-args"
@@ -45,6 +51,7 @@ def _container_entrypoint_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Pat
         "PATH": f"{stub_dir}{os.pathsep}{os.environ.get('PATH', '')}",
         "MARIMO_PASSWORD_FILE": str(secret),
         "MARIMO_ARGS_FILE": str(args_file),
+        "MARIMO_AI_CONFIG_ARGS_FILE": str(tmp_path / "marimo-ai-config-args"),
         "MARIMO_PORT": "8790",
     }
     return test_entrypoint, source, notebook, secret, args_file, env
@@ -125,6 +132,7 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
 
     assert "uv sync --locked --no-dev --extra ui --extra inference --no-install-project" in dockerfile
     assert "uv sync --locked --no-dev --extra ui --extra inference" in dockerfile
+    assert "COPY marimo.toml ./marimo.toml" in dockerfile
     assert "USER 10001:10001" in dockerfile
     assert "--host 0.0.0.0" in entrypoint
     assert "marimo edit \"$NOTEBOOK_PATH\"" in entrypoint
@@ -133,6 +141,8 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
     assert 'NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"' in entrypoint
     assert "cp --no-clobber" in entrypoint
     assert "access_token=)[^&[:space:]]+" in entrypoint
+    assert "python -m mgts_data_pipeline.marimo_ai_config" in entrypoint
+    assert entrypoint.index("python -m mgts_data_pipeline.marimo_ai_config") < entrypoint.index("exec marimo edit")
     assert "fetch" not in entrypoint and "normalize" not in entrypoint
     assert "--token-password " not in entrypoint
     assert "/data/notebooks" in dockerfile
@@ -151,6 +161,10 @@ def test_container_entrypoint_authenticates_editor_and_preserves_user_notebook(t
     assert result.returncode == 0, result.stderr
     assert notebook.read_text(encoding="utf-8") == "starter notebook"
     assert legacy.read_text(encoding="utf-8") == "existing collaborator edits"
+    assert (args_file.parent / "marimo-ai-config-args").read_text(encoding="utf-8").splitlines() == [
+        "-m",
+        "mgts_data_pipeline.marimo_ai_config",
+    ]
     assert args_file.read_text(encoding="utf-8").splitlines() == [
         "edit",
         str(notebook),

@@ -1,3 +1,15 @@
+# Safe template copied into the trusted editor user's config at startup.
+# The runtime generator enables AI only when an operator explicitly supplies
+# the HTTPS endpoint, limited inference key, and exact model allowlist.
+[ai]
+enabled = false
+allow_provider_config = false
+inline_tooltip = false
+
+[ai.models]
+displayed_models = []
+custom_models = []
+
 [runtime]
 auto_instantiate = true
 on_cell_change = "autorun"

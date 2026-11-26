@@ -29,6 +29,8 @@ if [[ ! -f "$NOTEBOOK_PATH" || ! -w "$NOTEBOOK_PATH" ]]; then
   exit 1
 fi
 
+python -m mgts_data_pipeline.marimo_ai_config
+
 exec marimo edit "$NOTEBOOK_PATH" \
   --host 0.0.0.0 --port "$PORT" --token-password-file "$MARIMO_PASSWORD_FILE" --headless --trusted \
   > >(sed --unbuffered --regexp-extended 's/(access_token=)[^&[:space:]]+/\1[REDACTED]/g') 2>&1

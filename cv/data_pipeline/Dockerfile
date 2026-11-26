@@ -13,6 +13,7 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --extra ui --extra inference --no-install-project
 
+COPY marimo.toml ./marimo.toml
 COPY mgts_data_pipeline ./mgts_data_pipeline
 COPY notebooks ./notebooks
 COPY container-entrypoint.sh /usr/local/bin/marimo-container-entrypoint
