@@ -144,3 +144,15 @@ Control cells show controls; data cells show a selected photo plus original
 labels, ranked results show reference photos, and evaluation shows a visible
 per-class confusion table with counts and caveats. Submitted operations must
 show a result or error; no visible no-op Python/import/empty code cells.
+
+Final display correction: no human-facing JSON viewer. Narrative headings,
+directions and limitations must be standalone native Marimo Markdown cells;
+summaries and metrics are tables, a selected photo has readable captions,
+and prediction outputs show provisional type, condition and the review action.
+Machine-readable manifests/indexes remain unchanged. Preserve edited workbooks.
+
+Render immediately on opening the trusted editor (auto_instantiate, autorun).
+The default flow selects an organizer sample, displays its image, held-group-out
+condition and nearest reference image without an upload, path entry or a Run click.
+Hide the optional personal upload in its own control. Only building a new index
+requires explicit confirmation; do not train or download from UI initialization.

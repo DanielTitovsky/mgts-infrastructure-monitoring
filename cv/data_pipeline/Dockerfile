@@ -30,6 +30,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && uv run --no-sync python -c "from ultralytics import YOLO"
 
+COPY marimo.toml /home/workbench/.marimo.toml
 USER 10001:10001
 EXPOSE 8790
 ENTRYPOINT ["/usr/local/bin/marimo-container-entrypoint"]

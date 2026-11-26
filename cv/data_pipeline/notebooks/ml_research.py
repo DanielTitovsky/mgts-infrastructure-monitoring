@@ -57,7 +57,28 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(ResearchError, load_material_manifest, manifest_path, mo):
+def _(mo):
+    mo.md(r"""
+    # Осмотр шкафов и распределительных щитов МГТС
+
+    **Первый снимок уже открыт.** Выберите другой в списке: исходное фото, прогноз модели и ближайший пример сменятся автоматически. Загружать датасет не нужно.
+    Для проверки нового снимка используйте раздел **«Сравнить фотографию»**.
+    Разметка МГТС — эталон; результат алгоритма — предварительная рекомендация.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _():
+    condition_ru = {
+        "normal": "Норма", "mechanical_damage": "Механическое повреждение",
+        "coating_damage": "Дефект покрытия", "unknown": "Без разметки",
+    }
+    return (condition_ru,)
+
+
+@app.cell(hide_code=True)
+def _(ResearchError, condition_ru, load_material_manifest, manifest_path, mo):
     """Read only the small JSON inventory on open; do not open photos here."""
     try:
         materials = load_material_manifest(manifest_path)
@@ -69,36 +90,24 @@ def _(ResearchError, load_material_manifest, manifest_path, mo):
         )
         photo_options = {}
     else:
-        inventory_message = mo.vstack(
-            [
-                mo.md(
-                    "## Реестр: 62 фотографии шкафов и распределительных щитов\n\n"
-                    "Подписи взяты из папок и исходных таблиц: 21 механическое повреждение, "
-                    "20 дефектов ЛКП, 20 исходно удовлетворительных объектов и 1 неизвестный снимок. "
-                    "Это метки уровня фотографии, **рамок объектов нет**. ЛКП и механические дефекты "
-                    "могут сосуществовать; `unknown` не означает «норма»."
-                ),
-                mo.callout(
-                    mo.md(
-                        "**Человеческая проверка обязательна.** Отдельно указывайте объект, "
-                        "наблюдаемое состояние и рекомендацию по осмотру/ремонту. Сходство или "
-                        "уверенность модели не означает исправность и не является основанием для выезда."
-                    ),
-                    kind="warn",
-                ),
-                mo.json(
-                    {
-                        "объект": materials["summary"]["object_type"],
-                        "исходная метка состояния": materials["summary"]["condition"],
-                        "разбиение": materials["summary"]["split"],
-                        "предупреждения источника": materials["warnings"],
-                    }
-                ),
-            ]
+        _rows = []
+        for _code, _caption in condition_ru.items():
+            _records = [r for r in materials["samples"] if r["condition"] == _code]
+            _rows.append({
+                "Состояние по МГТС": _caption,
+                "ТКШ": sum(r["object_type"] == "ТКШ" for r in _records),
+                "РЩ": sum(r["object_type"] == "РЩ" for r in _records),
+                "Тип не указан": sum(r["object_type"] not in {"ТКШ", "РЩ"} for r in _records),
+                "Всего фото": len(_records),
+            })
+        inventory_message = mo.ui.table(
+            _rows, selection=None, pagination=False, show_search=False,
+            show_column_summaries=False, show_data_types=False,
+            label=f"Состав выборки · {materials['sample_count']} фото",
         )
         photo_options = {
             (
-                f"{sample['object_type']} · {sample['condition']} · "
+                f"{sample['object_type']} · {condition_ru.get(sample['condition'], 'Без разметки')} · "
                 f"{sample['object_id']} · {sample['source_folder']}"
             ): index
             for index, sample in enumerate(materials["samples"])
@@ -125,41 +134,71 @@ def _(materials, mo, photo_options):
 
 
 @app.cell(hide_code=True)
-def _(ResearchError, load_material_sample, materials, mo, photo_picker):
+def _(index_path, load_reference_index):
+    try:
+        cabinet_index = load_reference_index(index_path)
+        by_sha = {r["sha256"]: r for r in cabinet_index["records"]}
+        index_error = None
+    except (ValueError, OSError) as _err:
+        cabinet_index, by_sha, index_error = None, {}, str(_err)
+    return by_sha, cabinet_index, index_error
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
+    ## Фото и прогноз
+
+    Слева — выбранное фото, его разметка МГТС и прогноз алгоритма. Справа — ближайший пример, по которому можно проверить вывод. При сравнении известного фото исключается вся группа этого объекта. **Рамок дефекта нет:** метод оценивает снимок целиком, а не место повреждения.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(BytesIO, ResearchError, by_sha, cabinet_index, condition_ru, embed_photo, index_error, load_embedder, load_material_sample, materials, mo, model_path, photo_picker, preview_image_bytes, retrieve):
     if materials is None or photo_picker is None or photo_picker.value is None:
-        photo_review = mo.md("Выберите фото, чтобы открыть оригинал и подписи источника.")
+        photo_review = mo.md("Нет фото для просмотра.")
     else:
         try:
-            selected_sample = load_material_sample(materials["path"], photo_picker.value)
-        except (ResearchError, OSError, ValueError) as error:
-            photo_review = mo.callout(mo.md(f"Не удалось открыть фотографию: {error}"), kind="danger")
-        else:
-            record = selected_sample["sample"]
-            photo_review = mo.vstack(
-                [
-                    mo.image(
-                        BytesIO(preview_image_bytes(selected_sample["image"])),
-                        alt="Оригинальная фотография объекта, показана в компактном размере",
-                        width="100%",
-                    ),
-                    mo.callout(mo.md(selected_sample["warning"]), kind="warn"),
-                    mo.md("### Исходные подписи — не результат распознавания"),
-                    mo.json(
-                        {
-                            "тип объекта": record["object_type"],
-                            "исходная метка состояния": record["condition"],
-                            "исходная папка": record["source_folder"],
-                            "ID объекта": record["object_id"],
-                            "статус из таблицы": record["status"],
-                            "описание из таблицы": record["description"],
-                            "папочная метка": record.get("folder_condition"),
-                            "размер пикселей": [selected_sample["width"], selected_sample["height"]],
-                            "разбиение": record.get("split", "unassigned"),
-                            "bbox": None,
-                        }
-                    ),
-                ]
+            _sample = load_material_sample(materials["path"], photo_picker.value)
+            _rec = _sample["sample"]
+            _preview = mo.image(
+                BytesIO(preview_image_bytes(_sample["image"], max_edge=800, max_bytes=45000)),
+                alt="Выбранное фото МГТС", width="100%",
             )
+            _truth = condition_ru.get(_rec["condition"], "Без разметки")
+            _left = [mo.md(f"**Фото № {_rec['object_id']}**"), _preview,
+                     mo.md(f"**Разметка МГТС:** {_rec['object_type']} · {_truth}"),
+                     mo.plain(_rec["description"] or "Описание не предоставлено")]
+            if cabinet_index is None:
+                photo_review = mo.vstack(_left + [mo.callout(mo.md(f"Прогноз недоступен: {index_error}"), kind="warn")])
+            else:
+                _cached = by_sha.get(_sample["sha256"])
+                _vec = (_cached["embedding"] if _cached else embed_photo(
+                    load_embedder(model_path), _rec["image_path"], _sample["image_bytes"]))
+                _prediction = retrieve(cabinet_index, _vec, top_k=5,
+                    exclude_sha256=_sample["sha256"], exclude_object_id=_rec["object_id"],
+                    exclude_group_id=_cached["group_id"] if _cached else None)
+                _type = _prediction["tentative"]["object_type"] or "Не определён"
+                _condition = condition_ru.get(_prediction["tentative"]["condition"], "Не определено")
+                _left += [mo.md(f"**Прогноз модели:** {_type} · {_condition}"),
+                          mo.md("**Действие:** требуется проверка специалиста.")]
+                _matches = _prediction["matches"]
+                if _matches:
+                    _nearest = _matches[0]
+                    _idx = next(i for i,r in enumerate(materials["samples"]) if r["image_path"] == _nearest["image_path"])
+                    _ref = load_material_sample(materials["path"], _idx)
+                    _right = [mo.md(f"**Ближайший пример · № {_nearest['object_id']}**"),
+                              mo.image(BytesIO(preview_image_bytes(_ref["image"], max_edge=800, max_bytes=45000)),
+                                       alt="Ближайший эталон, найденный моделью", width="100%"),
+                              mo.md(f"**Разметка эталона:** {_nearest['object_type']} · "
+                                    f"{condition_ru.get(_nearest['condition'], 'Без разметки')}"),
+                              mo.md(f"Косинусное сходство: **{_nearest['similarity']:.3f}** (не вероятность).")]
+                    photo_review = mo.hstack([mo.vstack(_left), mo.vstack(_right)], widths="equal", align="start")
+                else:
+                    photo_review = mo.vstack(_left)
+        except (ResearchError, OSError, ValueError, RuntimeError, StopIteration) as _err:
+            photo_review = mo.callout(mo.md(f"Не удалось сравнить выбранное фото с эталонами: {_err}"), kind="danger")
     photo_review
     return
 
@@ -167,9 +206,9 @@ def _(ResearchError, load_material_sample, materials, mo, photo_picker):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Эксперимент: локальный поиск похожих фотографий
+    ## Как работает поиск по разметке
 
-    Следующие кнопки запускают вычисления только после отправки формы.
+    Оценка по готовому индексу выводится автоматически. Только построение нового индекса требует подтверждения.
     Существующий checkpoint не обучался на шкафах или их повреждениях. Здесь
     он используется только как источник
     векторных признаков для поиска похожих примеров. Сходство — **не
@@ -195,14 +234,14 @@ def _(index_path, manifest_path, model_path, mo):
         submit_button_label="Построить новый локальный индекс признаков",
         bordered=True,
     )
-    build_form
+    mo.accordion({"Дополнительно: собрать новый индекс": build_form})
     return (build_form,)
 
 
 @app.cell(hide_code=True)
 def _(ResearchError, build_form, build_reference_index, mo):
     if build_form.value is None:
-        build_result = mo.md("Индекс ещё не строился. Для явного CPU-запуска отправьте форму выше.")
+        build_result = mo.md("Для просмотра и сравнения используется готовый индекс. Пересобирать его не нужно.")
     else:
         try:
             index_report = build_reference_index(
@@ -217,14 +256,11 @@ def _(ResearchError, build_form, build_reference_index, mo):
             build_result = mo.vstack(
                 [
                     mo.md("### Индекс готов: извлечены признаки, модель не обучалась"),
-                    mo.json(
-                        {
-                            "путь": index_report["output"],
-                            "образцов": index_report["build"]["record_count"],
-                            "исключено неизвестных": index_report["build"]["unknown_samples_excluded"],
-                            "checkpoint_sha256": index_report["provenance"]["checkpoint_sha256"],
-                            "ограничения": index_report["limitations"],
-                        }
+                    mo.ui.table(
+                        [{"Фото в индексе": index_report["build"]["record_count"],
+                          "Пропущено без метки": index_report["build"]["unknown_samples_excluded"],
+                          "Куда сохранено": index_report["output"]}],
+                        selection=None, pagination=False, show_data_types=False,
                     ),
                 ]
             )
@@ -233,24 +269,22 @@ def _(ResearchError, build_form, build_reference_index, mo):
 
 
 @app.cell(hide_code=True)
-def _(index_path, mo):
-    evaluate_path = mo.ui.text(value=index_path, label="Существующий локальный индекс")
-    evaluate_form = mo.ui.form(
-        mo.md("Индекс: {index}").batch(index=evaluate_path),
-        submit_button_label="Оценить поиск с исключением всей группы object_id / SHA-256",
-        bordered=True,
-    )
-    evaluate_form
-    return (evaluate_form,)
+def _(mo):
+    mo.md(r"""
+    ## Оценка качества
+
+    Каждое фото сравнивается только с эталонами **других групп**. Смотрите отдельно ошибки в названии дефекта и более опасные случаи: повреждение есть, но прогноз — «норма».
+    """)
+    return
 
 
 @app.cell(hide_code=True)
-def _(ResearchError, evaluate_form, evaluate_leave_group_out, mo):
-    if evaluate_form.value is None:
-        evaluation_result = mo.md("Оценка не запускалась. Отправьте форму с существующим индексом.")
+def _(ResearchError, binary_damage_summary, cabinet_index, evaluate_leave_group_out, mo):
+    if cabinet_index is None:
+        evaluation_result = mo.md("Для оценки нужен готовый индекс примеров.")
     else:
         try:
-            evaluation = evaluate_leave_group_out(evaluate_form.value["index"], top_k=5)
+            evaluation = evaluate_leave_group_out(cabinet_index, top_k=5)
         except (ResearchError, OSError, ValueError, RuntimeError) as error:
             evaluation_result = mo.callout(mo.md(f"Не удалось оценить индекс: {error}"), kind="danger")
         else:
@@ -370,29 +404,21 @@ def _(ResearchError, evaluate_form, evaluate_leave_group_out, mo):
 
 
 @app.cell(hide_code=True)
-def _(index_path, manifest_path, model_path, mo):
-    query_image = mo.ui.file(
-        filetypes=[".jpg", ".jpeg", ".png", ".webp"],
-        max_size=10_000_000,
-        label="Одна фотография JPEG/PNG/WebP (до 10 МБ и 20 Мп)",
-    )
-    query_index = mo.ui.text(value=index_path, label="Существующий локальный индекс")
-    query_checkpoint = mo.ui.text(value=model_path, label="Доверенный локальный checkpoint")
-    query_manifest = mo.ui.text(value=manifest_path, label="Реестр для показа похожих исходных фотографий")
-    query_limit = mo.ui.number(value=5, start=1, stop=10, step=1, label="Число примеров для сравнения: 1–10")
-    query_form = mo.ui.form(
-        mo.md("Фото: {photo}\n\nИндекс: {index}\n\nCheckpoint: {checkpoint}\n\nРеестр: {manifest}\n\nПримеры: {limit}").batch(
-            photo=query_image,
-            index=query_index,
-            checkpoint=query_checkpoint,
-            manifest=query_manifest,
-            limit=query_limit,
-        ),
-        submit_button_label="Сравнить фотографию с локальными примерами",
-        bordered=True,
-    )
-    query_form
-    return (query_form,)
+def _(mo):
+    mo.md(r"""
+    ## Дополнительно: своё фото
+
+    Выберите один JPEG, PNG или WebP: под ним появится прогноз и ближайшие размеченные примеры. Снимок обрабатывается локально, без отправки во внешний ИИ-сервис.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    query_image = mo.ui.file(filetypes=[".jpg", ".jpeg", ".png", ".webp"],
+                             max_size=10_000_000, label="Фото для анализа (до 10 МБ)")
+    mo.accordion({"Загрузить своё фото (необязательно)": query_image})
+    return (query_image,)
 
 
 @app.cell(hide_code=True)
@@ -400,6 +426,7 @@ def _(
     BytesIO,
     Image,
     ResearchError,
+    condition_ru,
     embed_photo,
     hashlib,
     load_embedder,
@@ -408,29 +435,32 @@ def _(
     load_reference_index,
     mo,
     preview_image_bytes,
-    query_form,
+    query_image,
+    index_path,
+    model_path,
+    manifest_path,
     retrieve,
 ):
-    if query_form.value is None:
-        query_result = mo.md("Сравнение не выполнялось. Выберите фото и явно отправьте форму.")
+    if not query_image.value:
+        query_result = mo.md("")
     else:
-        uploads = query_form.value["photo"]
+        uploads = query_image.value
         if not uploads:
             query_result = mo.callout(mo.md("Сначала выберите одну фотографию."), kind="danger")
         else:
             upload = uploads[0]
             try:
-                reference_index = load_reference_index(query_form.value["index"])
-                embedder = load_embedder(query_form.value["checkpoint"])
+                reference_index = load_reference_index(index_path)
+                embedder = load_embedder(model_path)
                 vector = embed_photo(embedder, upload.name, upload.contents)
                 uploaded_sha256 = hashlib.sha256(upload.contents).hexdigest()
                 matches = retrieve(
                     reference_index,
                     vector,
-                    top_k=query_form.value["limit"],
+                    top_k=5,
                     exclude_sha256=uploaded_sha256,
                 )
-                query_materials = load_material_manifest(query_form.value["manifest"])
+                query_materials = load_material_manifest(manifest_path)
                 with Image.open(BytesIO(upload.contents)) as source_image:
                     upload_preview = preview_image_bytes(source_image)
             except (ResearchError, OSError, ValueError, RuntimeError) as error:
@@ -442,15 +472,14 @@ def _(
                         alt="Исходная загруженная фотография, показана в компактном размере",
                         width="100%",
                     ),
-                    mo.callout(mo.md(matches["message"]), kind="warn"),
-                    mo.json(
-                        {
-                            "ориентир по ближайшим примерам": matches["tentative"],
-                            "нужна проверка специалиста": matches["needs_review"],
-                            "сходство — вероятность": matches["similarity_is_probability"],
-                            "автоматическая рекомендация ремонта": matches["automated_repair"],
-                        }
+                    mo.md("### Предварительный результат"),
+                    mo.ui.table(
+                        [{"Тип объекта": matches["tentative"]["object_type"] or "Не определён",
+                          "Состояние": condition_ru.get(matches["tentative"]["condition"], "Не определено"),
+                          "Рекомендация": "Проверить вручную"}],
+                        selection=None, pagination=False, show_data_types=False,
                     ),
+                    mo.md("Ниже — похожие размеченные фото. Сходство не равно вероятности повреждения."),
                 ]
                 manifest_indices = {
                     sample["image_path"]: sample_index
@@ -467,7 +496,7 @@ def _(
                             [
                                 mo.md(
                                     f"**Похожий исходный пример (сходство {match['similarity']:.3f}, не вероятность):** "
-                                    f"{source['object_type']} · {source['condition']} · "
+                                    f"{source['object_type']} · {condition_ru.get(source['condition'], 'Без разметки')} · "
                                     f"{source['object_id']} · {source['source_folder']}"
                                 ),
                                 mo.image(
@@ -485,33 +514,15 @@ def _(
 
 
 @app.cell(hide_code=True)
-def _(manifest_path, mo):
+def _(mo):
     mo.md(r"""
-    ## Черновик будущего воспроизводимого эксперимента
+    ## Что проверить перед обучением
 
-    Набор мал и не имеет выделенных train/validation/test частей. Сначала —
-    просмотр первичных фото и grouped leave-one-object-ID-out retrieval,
-    не обучение детектора. Если позже появится классификатор изображения,
-    отдельно зафиксируйте цель (тип объекта **или** состояние), исключите
-    `unknown`, удерживайте одинаковые `object_id` вместе независимо от папки
-    и типа, проверьте пересечение SHA-256, назначьте нетронутую тестовую группу
-    до любых экспериментов. Текущий checkpoint не является готовым
-    классификатором шкафов.
+    1. **Разметка.** У фото есть подпись о состоянии, но нет рамок дефектов. Повреждение корпуса и покрытия могут встречаться вместе.
+    2. **Выборка.** Фото одного объекта и точные дубли нельзя делить между обучением и проверкой. Кадр без разметки не считается исправным.
+    3. **Критерий.** Сравнивайте precision и recall по каждому виду повреждений и отдельно считайте повреждённые объекты, которые алгоритм назвал нормальными. До полевой проверки решение о ремонте принимает специалист.
     """)
-    EXPERIMENT_RECIPE = {
-        "manifest": manifest_path,
-        "task": "image-level retrieval baseline; no supervised training implemented",
-        "separate_targets": ["object_type", "condition"],
-        "unknown_policy": "exclude_and_report; never convert to normal",
-        "group_key": "global object_id plus exact-content SHA-256 closure",
-        "held_out_splits": "human-assigned grouped train/validation/test before fitting",
-        "checkpoint": "existing trusted local file only; no download",
-        "training_run": False,
-        "epochs": None,
-        "automated_repair_recommendation": False,
-    }
-    mo.json(EXPERIMENT_RECIPE)
-    return (EXPERIMENT_RECIPE,)
+    return
 
 
 if __name__ == "__main__":

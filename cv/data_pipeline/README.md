@@ -273,7 +273,7 @@ Pass an **absolute** path to the generated `data.yaml` to Ultralytics. The YAML 
 Сначала исследуются выданные РЩ/ТКШ, их исходные состояния и описания.
 Общая нормализация/скачивание остаются командами `mgts-datasets`.
 
-Контейнер открывает `/data/notebooks/ml_research.py`. При первом запуске
+Контейнер открывает `/data/notebooks/cabinet_review.py` из шаблона `ml_research.py`. При первом запуске
 копируется новый bundled notebook; старый `/data/notebooks/dataset_workbench.py`
 и пользовательские правки остаются нетронутыми. Для изменения сохранённого
 ноутбука используйте редактор; обновление образа не перезаписывает его.
