@@ -9,6 +9,7 @@ import hashlib
 import json
 import mimetypes
 import tempfile
+from zipfile import ZipFile
 from pathlib import Path
 
 import boto3
@@ -58,6 +59,36 @@ def run(source, client):
         client.create_bucket(Bucket=bucket)
     added = 0
     with tempfile.TemporaryDirectory() as td:
+        labels = []
+        for archive in sorted(name for name in FILES if name.endswith('.zip')):
+            with ZipFile(source / archive) as z:
+                for info in z.infolist():
+                    if not info.filename.lower().endswith('.xlsx'):
+                        continue
+                    raw = z.read(info)
+                    path = Path(td) / f"label-{len(labels)}.xlsx"
+                    path.write_bytes(raw)
+                    key = f"labels/{Path(archive).stem}/{Path(info.filename).name}"
+                    entries.append((key, path, digest(path)))
+                    labels.append(dict(key=prefix+key, sha256=digest(path), zip_member=info.filename,
+                        source_url="https://lk.studchamp.mgts.ru/storage/docs/"+archive))
+        if len(labels) != 6:
+            raise ValueError("expected six organizer label workbooks")
+        catalog = Path(td) / "label-sources.json"
+        catalog.write_text(json.dumps(labels, indent=2,ensure_ascii=False)+"\n")
+        entries.append(("labels/SOURCES.json",catalog,digest(catalog)))
+        results = {}
+        for filename in ("cabinet-boxes.json", "cabinet-oof-predictions-v1.json", "cabinet-mlp-head-v1.json",
+                         "cabinet-final-index-v1.json", "comparison.json"):
+            path = source / filename
+            if path.exists():
+                entries.append(("predictions/v1/"+filename,path,digest(path)))
+                results[filename] = {"sha256": digest(path), "bytes":path.stat().st_size}
+        if results:
+            meta = Path(td) / "result-sources.json"
+            meta.write_text(json.dumps({"manifest_sha256":digest(manifest),"results":results,
+                "ground_truth":False},indent=2)+"\n")
+            entries.append(("predictions/v1/SOURCES.json",meta,digest(meta)))
         prov = Path(td) / "SOURCES.json"
         prov.write_text(json.dumps({"originals": sources, "manifest_sha256": digest(manifest)},indent=2)+"\n")
         # Manifest is the publish marker: populate images before publishing it.
