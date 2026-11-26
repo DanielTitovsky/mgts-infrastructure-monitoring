@@ -10,6 +10,9 @@ services:
     ports:
       - "${MARIMO_PUBLISH_HOST:-127.0.0.1}:${MARIMO_PUBLISH_PORT:-8790}:8790"
     environment:
+      MGTS_MARIMO_AI_BASE_URL: ${MGTS_MARIMO_AI_BASE_URL:-}
+      MGTS_MARIMO_AI_API_KEY: ${MGTS_MARIMO_AI_API_KEY:-}
+      MGTS_MARIMO_AI_MODELS: ${MGTS_MARIMO_AI_MODELS:-}
       HF_TOKEN: ${HF_TOKEN:-}
       MARIMO_PASSWORD_FILE: /run/secrets/marimo_password
       MARIMO_PORT: "8790"

@@ -15,3 +15,11 @@ def test_screen_uses_native_markdown_and_structured_outputs():
     assert any("шкаф" in val.lower() for val in markdown)
     assert any("разметк" in val.lower() for val in markdown)
     assert all("hide_code=True" in ast.unparse(f.decorator_list[0]) for f in funcs)
+
+
+def test_team_assistant_uses_optional_independent_settings_without_personal_keys():
+    import yaml
+    compose = yaml.safe_load((Path(__file__).parents[3] / "compose.ml.yml").read_text())
+    env = compose["services"]["workbench"]["environment"]
+    for key in ("MGTS_MARIMO_AI_BASE_URL", "MGTS_MARIMO_AI_API_KEY", "MGTS_MARIMO_AI_MODELS"):
+        assert env[key] == "${" + key + ":-}"

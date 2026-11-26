@@ -156,3 +156,9 @@ The default flow selects an organizer sample, displays its image, held-group-out
 condition and nearest reference image without an upload, path entry or a Run click.
 Hide the optional personal upload in its own control. Only building a new index
 requires explicit confirmation; do not train or download from UI initialization.
+
+Follow-up: install the native Marimo OpenAI-compatible adapter independently
+of upstream credential provisioning. Do not expose or auto-enable a personal
+or management key in a shared editor. Keep the prototype functional without
+LLM access. Distinguish installed support, local compatibility smoke and real
+authenticated end-to-end inference; only the last proves a working hosted chat.

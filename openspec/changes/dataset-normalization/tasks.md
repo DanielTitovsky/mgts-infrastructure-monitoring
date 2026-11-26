@@ -40,3 +40,4 @@
 - [x] Verify the default editor serves the cabinet notebook with code hidden on Markdown/widgets/output, first photo visible and selection reactive.
 - [x] Investigate optional CLIProxy assistant (time-boxed). Native custom providers/model selection supported by Marimo, but no confirmed team-scoped inference credential and optional OpenAI adapter absent. Not enabled; no data sent.
 - [x] Render native Markdown, captions and purpose-specific tables instead of JSON; real-fixture export (including from hosted container) and authenticated URL verified.
+- [ ] Install/test the native OpenAI-compatible assistant dependency on the hosted candidate. Keep real CLIProxy access separately gated on an appropriate team inference key and trusted transport; do not claim a live response from a local mock.

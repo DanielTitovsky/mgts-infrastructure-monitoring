@@ -78,6 +78,9 @@ def test_compose_runs_only_the_authenticated_workbench_with_loopback_host_port()
     assert service["ports"] == ["${MARIMO_PUBLISH_HOST:-127.0.0.1}:${MARIMO_PUBLISH_PORT:-8790}:8790"]
     assert service["expose"] == ["8790"]
     assert service["environment"] == {
+        "MGTS_MARIMO_AI_BASE_URL": "${MGTS_MARIMO_AI_BASE_URL:-}",
+        "MGTS_MARIMO_AI_API_KEY": "${MGTS_MARIMO_AI_API_KEY:-}",
+        "MGTS_MARIMO_AI_MODELS": "${MGTS_MARIMO_AI_MODELS:-}",
         "HF_TOKEN": "${HF_TOKEN:-}",
         "MARIMO_PASSWORD_FILE": "/run/secrets/marimo_password",
         "MARIMO_PORT": "8790",
