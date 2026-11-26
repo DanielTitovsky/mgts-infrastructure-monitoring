@@ -1,5 +1,7 @@
 # MGTS local dataset pipeline
 
+[Итоговый отчёт: четыре метода, пять значений k, precision / recall / F1](docs/final-results.md).
+
 This module provides a read-only `inspect`/`fetch` path and an atomic local
 `normalize`/`validate` path for the six pinned research datasets. It prepares
 separate YOLO detection datasets; it does **not** train a model, claim accuracy,

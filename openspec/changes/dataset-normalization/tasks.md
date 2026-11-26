@@ -43,3 +43,4 @@
 - [ ] Install/test the native OpenAI-compatible assistant dependency on the hosted candidate. Keep real CLIProxy access separately gated on an appropriate team inference key and trusted transport; do not claim a live response from a local mock.
 - [ ] Publish whole-dataset audit, click-to-inspect predictions, and real cabinet detection proposals on photos; verify retained 62-row identity, digest and empty-output handling.
 - [ ] Compare fixed frozen-feature classifiers and a supervised neural head with the exact grouped protocol; evaluate, record and show true held-out predictions.
+- [x] Publish a concise final experiment report covering all k values and the separate main classifier diagnostic; verify counts against saved predictions before publishing.
