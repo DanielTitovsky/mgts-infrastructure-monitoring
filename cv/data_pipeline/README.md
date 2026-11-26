@@ -41,10 +41,10 @@ uv run --extra test python -m pytest --cov=mgts_data_pipeline --cov-report=term-
 
 `compose.ml.yml` at the repository root is the dedicated container definition
 for the hosted Marimo editor. It runs authenticated `marimo edit` against the
-dataset workbench notebook, rather than serving the notebook in app-only
+final ML research notebook, rather than serving the notebook in app-only
 `marimo run` mode. Its build context is only
 `cv/data_pipeline`; it installs the committed `uv.lock` with the optional UI
-and CPU inference extras and starts with the same CLI-backed notebook. The existing
+and CPU inference extras and starts with the ML research notebook. The existing
 `cv/ml/best.pt` checkpoint is not copied into the image: Compose bind-mounts a
 host artifact read-only at `/models/best.pt`. The default host source is
 `./cv/ml/best.pt`; set `MGTS_MODEL_FILE` to an absolute path for a
@@ -105,29 +105,18 @@ your local machine or use the configured server preview:
 uv sync --project cv/data_pipeline --extra ui --extra inference
 # Local app; Marimo prints its URL and listens on loopback by default.
 MGTS_MODEL_PATH="$PWD/cv/ml/best.pt" uv run --project cv/data_pipeline \
-  --extra ui --extra inference marimo run \
-  cv/data_pipeline/notebooks/dataset_workbench.py
+  --extra ui --extra inference marimo edit \
+  cv/data_pipeline/notebooks/ml_research.py
 # Static notebook check.
 uv run --project cv/data_pipeline --extra ui --extra inference marimo check --strict \
-  cv/data_pipeline/notebooks/dataset_workbench.py
+  cv/data_pipeline/notebooks/ml_research.py
 ```
 
-The dataset app is a thin form over the same `mgts-datasets` CLI. It does not duplicate
-normalization code. Select an action, source(s), roots and paths, then submit
-the form: **opening the app or editing form controls does not run a pipeline
-operation**. The default is the known-working `broken_poles_v2` starter source;
-its data is train-only and remains unsuitable for evaluation without a separate
-held-out split. The form exposes no image preview, model training, Hub upload,
-or token field. For private Hub downloads, provision `HF_TOKEN` to the server
-process through the configured secret store.
-
-Photo inference is a separate explicit-submit form. It accepts one JPEG, PNG,
-or WebP file up to 10 MB / 20 megapixels, runs on CPU, does not render or save
-the image, and returns class names from the checkpoint metadata, confidence,
-and source-image pixel `xyxy` boxes. Local launchers must point
-`MGTS_MODEL_PATH` to an existing trusted checkpoint; the default is
-`/models/best.pt`. A missing or invalid checkpoint fails closed before any
-prediction—there is no weight download or training fallback.
+The final research notebook reads the organizer manifest and photos on demand.
+Keep fetching and normalization in the CLI; the old notebook and its helper
+remain available to collaborators who already saved experimental edits.
+Generic pole detection is a separate optional experiment, not a cabinet
+condition model. No model is fetched on notebook startup.
 
 The selected existing artifact is `cv/ml/best.pt`, whose checkpoint metadata
 identifies task `detect`, class `odn_pole`, and YOLOv8n base architecture.

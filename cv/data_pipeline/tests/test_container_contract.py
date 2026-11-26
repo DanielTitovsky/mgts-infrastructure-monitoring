@@ -84,6 +84,7 @@ def test_compose_runs_only_the_authenticated_workbench_with_loopback_host_port()
         "MGTS_DATA_ARCHIVE_ROOT": "/data/archive",
         "MGTS_DATA_HUB_ROOT": "/data/hub",
         "MGTS_DATA_OUTPUT_ROOT": "/data/output",
+        "MGTS_FINAL_MANIFEST": "/data/archive/mgts-final/final-materials.json",
         "MGTS_MODEL_PATH": "/models/best.pt",
     }
     assert service["secrets"] == [{"source": "marimo_password", "target": "marimo_password"}]

@@ -48,3 +48,12 @@ Initial runtime failures: Dokploy recursively changed mounted-secret owner to UI
 - Final verified recovery: dedicated logical/physical network `mgts_marimo_editor` assigned explicitly to both services avoids the stale label; ordinary Dokploy command restored to empty/default. Deployment `B7lfodsZ05GH0p1aupVhF` succeeded for runtime source `4b6896e2b10ad8d350355618618e8cb2864d316d`.
 - Trusted public HTTPS: unauthenticated request redirects to login; password POST and authenticated editor-only `/api/files/roots` return 200; bootstrap mode is edit. Through the authenticated HTTP API, created a temporary notebook, saved a marker edit, recreated containers via Dokploy, downloaded and verified that exact marker, then deleted only that temporary probe. No browser or visual inspection.
 - Complete pipeline suite: 99 tests pass. Named notebook volume and original workbench notebook survive recreation. Hosted password unchanged. PR remains Draft, no merge performed.
+
+### Final fixture and start-page acceptance
+The organizer ZIPs were joined to their six spreadsheets by folder and filename in
+a fresh directory; all 62 content hashes match the copies in the persistent
+archive volume at /data/archive/mgts-final. An HTTP 200 from the editor does
+not prove the right notebook is open: after data promotion the authenticated
+root still named /data/notebooks/dataset_workbench.py. Check the served
+marimo-filename AND the downloaded notebook source against the candidate
+after switching to the new filename. Never overwrite the previous saved notebook.
