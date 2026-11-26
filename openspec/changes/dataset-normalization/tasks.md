@@ -38,5 +38,5 @@
 - [x] Run unit/integration checks and strict notebook validation without browser/vision.
 - [x] Push the correction to existing PR2, verify canonical SHA, deploy via Dokploy and verify authenticated notebook/code/persistent state. Existing PR description was not modified: GitHub-write authorization was denied; the access links already exist there.
 - [x] Verify the default editor serves the cabinet notebook with code hidden on Markdown/widgets/output, first photo visible and selection reactive.
-- [ ] Optional, time-boxed: verify native Marimo AI with the existing CLIProxy, safe authentication and only provider-supported selectable models. Do not hold up the standalone ML demo or send organizer images to external AI automatically.
-- [ ] Render native Markdown, captions and purpose-specific tables instead of JSON, export with real fixtures, and verify the corrected version at the public URL.
+- [x] Investigate optional CLIProxy assistant (time-boxed). Native custom providers/model selection supported by Marimo, but no confirmed team-scoped inference credential and optional OpenAI adapter absent. Not enabled; no data sent.
+- [x] Render native Markdown, captions and purpose-specific tables instead of JSON; real-fixture export (including from hosted container) and authenticated URL verified.
