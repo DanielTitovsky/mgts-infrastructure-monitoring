@@ -133,3 +133,14 @@ and point the hosted editor at the new file. No training/download/normalization
 on import, opening the page, or changing controls. Training must be explicit,
 use a trusted existing checkpoint, keep sources/classes separate unless a human
 approves mappings, and keep evaluation split leakage visible.
+
+User-facing final view: keep the editor for trusted experiments, but hide
+cell source by default on Markdown, widget, data loading and output cells.
+The default document itself must show a cabinet photo, a working photo
+selector, organizer labels and the distinction between labels and predicted
+conditions. Users must not paste Python to see the workspace. Loading the
+small manifest/current picture is fine; queries and model work are explicit.
+Control cells show controls; data cells show a selected photo plus original
+labels, ranked results show reference photos, and evaluation shows a visible
+per-class confusion table with counts and caveats. Submitted operations must
+show a result or error; no visible no-op Python/import/empty code cells.

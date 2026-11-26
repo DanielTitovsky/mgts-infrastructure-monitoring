@@ -37,3 +37,4 @@
 - [x] Keep prior persisted notebook intact and publish revised research notebook as a new discoverable hosted entrypoint.
 - [ ] Run unit/integration checks and strict notebook validation without browser/vision.
 - [ ] Commit/push existing PR2, verify canonical SHA, update its description if authorized, deploy via Dokploy and verify authenticated notebook/code/persistent state.
+- [ ] Verify the default editor serves the cabinet notebook with code hidden on Markdown/widgets/output, first photo visible and selection reactive.

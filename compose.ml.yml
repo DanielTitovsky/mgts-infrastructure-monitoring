@@ -17,7 +17,7 @@ services:
       MGTS_DATA_HUB_ROOT: /data/hub
       MGTS_DATA_OUTPUT_ROOT: /data/output
       MGTS_FINAL_MANIFEST: /data/archive/mgts-final/final-materials.json
-      MGTS_REFERENCE_INDEX: /data/archive/mgts-final/reference-index.json
+      MGTS_REFERENCE_INDEX: /data/archive/mgts-final/cabinet-final-index-v1.json
       MGTS_MODEL_PATH: /models/best.pt
     secrets:
       - source: marimo_password
