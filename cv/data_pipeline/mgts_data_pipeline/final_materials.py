@@ -9,10 +9,52 @@ import json
 from pathlib import Path, PurePosixPath
 import shutil
 import tempfile
+import urllib.request
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
 from PIL import Image
+
+ORGANIZER_ARCHIVES = {
+    'doc-1795639519.zip': '489abe2497e1282d166e56197ff0f61c033ecbf7d4545ad9c57f757eb20302ce',
+    'doc-1795639569.zip': '7f343037479cac7340dbc9f912a37713d4b7c2a4a7e6dac0bd1955ab409c56ed',
+}
+
+
+def download_archives(root: Path) -> list[Path]:
+    """Explicitly fetch pinned organizer artifacts; verified files are reused."""
+    root.mkdir(parents=True, exist_ok=True)
+    paths = []
+    for name, digest in ORGANIZER_ARCHIVES.items():
+        target = root / name
+        if target.is_symlink():
+            raise ValueError('unsafe archive symlink')
+        if target.exists():
+            if hashlib.sha256(target.read_bytes()).hexdigest() != digest:
+                raise ValueError(f'archive SHA-256 mismatch: {name}; preserve and investigate this file')
+        else:
+            fd, pending_name = tempfile.mkstemp(prefix='.'+name, dir=root)
+            import os
+            pending = Path(pending_name)
+            try:
+                with os.fdopen(fd, 'wb') as out, urllib.request.urlopen(
+                    'https://lk.studchamp.mgts.ru/storage/docs/'+name, timeout=60
+                ) as response:
+                    size = 0
+                    while block := response.read(1024*1024):
+                        size += len(block)
+                        if size > 100_000_000:
+                            raise ValueError('organizer download exceeds 100 MB limit')
+                        out.write(block)
+                if hashlib.sha256(pending.read_bytes()).hexdigest() != digest:
+                    raise ValueError(f'archive SHA-256 mismatch: {name}')
+                # Hard link fails rather than replacing a file created concurrently.
+                os.link(pending, target)
+            finally:
+                pending.unlink(missing_ok=True)
+        paths.append(target)
+    return paths
+
 
 IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
 NS = {'s': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
@@ -157,10 +199,14 @@ def prepare_materials(archives: list[Path], output: Path) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--archive', type=Path, action='append', required=True)
+    parser.add_argument('--archive', type=Path, action='append')
+    parser.add_argument('--download-root', type=Path, help='explicitly fetch/reuse pinned organizer ZIPs here')
     parser.add_argument('--output', type=Path, required=True)
     args = parser.parse_args()
-    result = prepare_materials(args.archive, args.output)
+    if bool(args.archive) == bool(args.download_root):
+        parser.error('choose --archive or --download-root')
+    archives = download_archives(args.download_root) if args.download_root else args.archive
+    result = prepare_materials(archives, args.output)
     print(json.dumps({'counts': result['counts'], 'sources': result['sources'], 'output': str(args.output)}, ensure_ascii=False))
 
 

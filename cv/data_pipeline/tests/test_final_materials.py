@@ -71,3 +71,21 @@ def test_spreadsheet_labels_are_folder_qualified_and_png_supported(tmp_path):
     assert result['samples'][0]['description']=='МП двери'
     assert result['samples'][0]['object_type']=='ТКШ'
     assert result['samples'][0]['height']==7
+
+
+def test_verified_download_reuses_valid_archive_and_rejects_hash_mismatch(tmp_path,monkeypatch):
+    import hashlib
+    from mgts_data_pipeline import final_materials as fm
+    content=b'archive bytes'
+    monkeypatch.setattr(fm,'ORGANIZER_ARCHIVES',{'fixture.zip':hashlib.sha256(content).hexdigest()})
+    calls=[]
+    def open_url(url,timeout):
+        calls.append(url)
+        return BytesIO(content)
+    monkeypatch.setattr(fm.urllib.request,'urlopen',open_url)
+    assert fm.download_archives(tmp_path)==[tmp_path/'fixture.zip']
+    assert fm.download_archives(tmp_path)==[tmp_path/'fixture.zip']
+    assert len(calls)==1
+    (tmp_path/'fixture.zip').write_bytes(b'bad')
+    with pytest.raises(ValueError,match='mismatch'):
+        fm.download_archives(tmp_path)

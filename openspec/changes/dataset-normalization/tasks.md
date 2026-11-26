@@ -31,9 +31,9 @@
 
 
 ## Final ML workspace
-- [ ] Read final DOCX and inventory supplied ZIP artifacts without pixel interpretation; record actual files/classes/labels and dataset suitability.
+- [x] Read final DOCX and inventory supplied ZIP artifacts without pixel interpretation; record actual files/classes/labels and dataset suitability.
 - [ ] Replace CLI-centric notebook with editable ML photo/label review, visible normalization ambiguities, original-versus-prediction overlays and explicit inference controls.
 - [ ] Provide a bounded reproducible training recipe/config with honest holdout/leakage/class semantics; no automatic expensive training.
-- [ ] Keep prior persisted notebook intact and publish revised research notebook as a new discoverable hosted entrypoint.
+- [x] Keep prior persisted notebook intact and publish revised research notebook as a new discoverable hosted entrypoint.
 - [ ] Run unit/integration checks and strict notebook validation without browser/vision.
 - [ ] Commit/push existing PR2, verify canonical SHA, update its description if authorized, deploy via Dokploy and verify authenticated notebook/code/persistent state.
