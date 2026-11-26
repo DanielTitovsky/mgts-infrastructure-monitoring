@@ -80,3 +80,6 @@ photo; this operation does not update any other queue row. Compose source and
 model metadata checks are not runtime proof: verify the actual Dokploy
 deployment and process the existing queue through the authorized operator
 before claiming hosted inference works.
+
+
+Актуальный hosted checkpoint: командный `cv/ml/yolo-v/best.pt` из main e101913. Он классифицирует всё фото: mp_rsh → check_required; ok_tksh → ok. На результате класс и score, без рамок.

@@ -48,13 +48,13 @@ from app.core.processing import (
 from app.db.session import SessionLocal, dispose_engine
 from app.models import Defect, InfrastructureObject as Obj, Status
 from app.models.infrastructure_object import PHOTO_KEY_PREFIX
-from app.services.cabinet_detector import detect_cabinets, draw_cabinets
 from app.services.cv_logic import (
     CLASS_RULES,
     REQUIRED_STATUSES,
     Detection,
     Outcome,
     build_outcome,
+    classifier_outcome,
     condition_is_assessed,
     gps_from_image,
     resolve_image_path,
@@ -94,7 +94,7 @@ def analyze_image(
     model: YOLO,
     source: Path,
     save_path: Path,
-) -> tuple[list[Detection], tuple[float, float] | None]:
+) -> tuple[Outcome, tuple[float, float] | None]:
     results = model.predict(
         source=str(source),
         imgsz=settings.cv_imgsz,
@@ -104,6 +104,24 @@ def analyze_image(
     )
     result = results[0]
 
+    if model.task == "classify":
+        probs = result.probs
+        if probs is None:
+            raise ValueError("Classification result has no probabilities")
+        label = model.names[int(probs.top1)]
+        score = float(probs.top1conf)
+        outcome = classifier_outcome(label, score)
+        frame = result.orig_img.copy()
+        scale = max(0.7, min(frame.shape[:2]) / 550)
+        caption = f"{label}  {score:.1%}"
+        thickness = max(2, round(scale * 2))
+        (w, h), baseline = cv2.getTextSize(caption, cv2.FONT_HERSHEY_SIMPLEX, scale, thickness)
+        cv2.rectangle(frame, (0, 0), (w + 16, h + baseline + 16), (25, 25, 25), -1)
+        cv2.putText(frame, caption, (8, h + 6), cv2.FONT_HERSHEY_SIMPLEX, scale,
+                    (255, 255, 255), thickness, cv2.LINE_AA)
+        if not cv2.imwrite(str(save_path), frame):
+            raise RuntimeError(f"Could not save classification result: {save_path}")
+        return outcome, gps_from_image(source)
     detections: list[Detection] = []
     boxes = result.boxes
     if boxes is not None and len(boxes) > 0:
@@ -118,15 +136,10 @@ def analyze_image(
                 )
             )
 
-    annotated = result.plot()
-    if not detections:
-        detections = detect_cabinets(result.orig_img)
-        draw_cabinets(annotated, detections)
-
-    if not cv2.imwrite(str(save_path), annotated):
+    if not cv2.imwrite(str(save_path), result.plot()):
         raise RuntimeError(f"Не удалось сохранить обработанное фото: {save_path}")
 
-    return detections, gps_from_image(source)
+    return build_outcome(detections, high_confidence=settings.cv_high_confidence), gps_from_image(source)
 
 
 async def prepare_source(job: Job, tmp_dir: Path) -> Path:
@@ -238,7 +251,7 @@ async def save_result(
                     defect_confidence=item.confidence,
                     severity=item.severity,
                     recommended_action=item.action,
-                    bbox=list(item.bbox),
+                    bbox=list(item.bbox) if item.bbox is not None else None,
                     source="cv",
                 )
             )
@@ -306,8 +319,7 @@ async def handle_job(job: Job, model: YOLO, status_map: dict[str, int]) -> None:
             processed_dir().mkdir(parents=True, exist_ok=True)
             save_path = processed_dir() / save_name
 
-            detections, gps = await asyncio.to_thread(analyze_image, model, source, save_path)
-            outcome = build_outcome(detections, high_confidence=settings.cv_high_confidence)
+            outcome, gps = await asyncio.to_thread(analyze_image, model, source, save_path)
             await save_result(job, outcome, f"{PROCESSED_PREFIX}{save_name}", gps, status_map)
         except (ValueError, FileNotFoundError) as exc:
             logger.error("Объект ID=%s отклонён: %s", job.id, exc)
@@ -350,6 +362,10 @@ async def sleep_or_stop(stop: asyncio.Event, seconds: float) -> None:
 def log_model_info(model: YOLO) -> None:
     names = dict(model.names)
     logger.info("Классы модели: %s", names)
+    if model.task == "classify":
+        if set(names.values()) != {"mp_rsh", "ok_tksh"}:
+            raise ValueError("Unexpected team model classes")
+        return
     for name in names.values():
         if name not in CLASS_RULES:
             logger.warning(

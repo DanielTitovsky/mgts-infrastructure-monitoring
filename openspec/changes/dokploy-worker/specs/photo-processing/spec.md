@@ -46,3 +46,10 @@ With cabinet localization enabled, the worker SHALL use a locally pinned cabinet
 #### Scenario: Cabinet localization without confirmed damage
 - **WHEN** the legacy detector fails to recognize a cabinet and the cabinet detector finds one
 - **THEN** the output JPEG shows a labeled object box and the inspection status is check_required, not ok.
+
+### Requirement: Use the team's exact main classifier for the final worker
+This supersedes the earlier cabinet-box fallback. Hosted worker uses the team classification
+checkpoint from main e101913 at cv/ml/yolo-v/best.pt. It records the winning class:
+mp_rsh is a photo-level mechanical-damage prediction for an electrical panel (check_required);
+ok_tksh is a predicted normal telecom cabinet (ok). A classification result SHALL NOT
+produce spatial boxes. The processed JPEG must visibly identify the model class and score.
