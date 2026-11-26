@@ -31,6 +31,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/* \
     && uv run --no-sync python -c "from ultralytics import YOLO"
 
+RUN marimo export md /app/notebooks/ml_research.py -o /app/notebooks/cabinet_gallery.md
 COPY marimo.toml /home/workbench/.marimo.toml
 USER 10001:10001
 EXPOSE 8790

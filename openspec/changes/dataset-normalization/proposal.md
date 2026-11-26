@@ -162,3 +162,13 @@ of upstream credential provisioning. Do not expose or auto-enable a personal
 or management key in a shared editor. Keep the prototype functional without
 LLM access. Distinguish installed support, local compatibility smoke and real
 authenticated end-to-end inference; only the last proves a working hosted chat.
+
+Dataset audit and second model: the home should show one selectable row per
+organizer photo (including the unlabelled image); compare source/prediction,
+false-normal cases and grouped-held-out results. Selecting a row must show the
+actual photo and any computed box predictions from a real cabinet/board
+detector. Distinguish unavailable detector output, evaluated empty output,
+and positive boxes. Object proposals are not evidence of localized defects.
+A second supervised neural classification head must train on labeled frozen
+features only within each train fold; publish protocol, confusion metrics,
+and failure cases without implying independent field validation.

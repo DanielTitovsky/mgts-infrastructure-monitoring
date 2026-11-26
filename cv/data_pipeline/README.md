@@ -273,6 +273,21 @@ Pass an **absolute** path to the generated `data.yaml` to Ultralytics. The YAML 
 Сначала исследуются выданные РЩ/ТКШ, их исходные состояния и описания.
 Общая нормализация/скачивание остаются командами `mgts-datasets`.
 
+Для источника MinIO запускающий процесс должен передать `MGTS_DATASET_S3_ENDPOINT`,
+`MGTS_DATASET_S3_ACCESS_KEY` и `MGTS_DATASET_S3_SECRET_KEY` от отдельного
+пользователя с read-only доступом только к нужному bucket/prefix. Bucket и prefix
+по умолчанию: `mgts-hackathon` и `final-2026`; их можно переопределить через
+`MGTS_DATASET_S3_BUCKET` и `MGTS_DATASET_S3_PREFIX`. `MGTS_DATASET_S3_CACHE_DIR`
+задаёт корень локального кэша (по умолчанию
+`/data/archive/cache/mgts-final-minio`). Подготовка каждый раз загружает manifest,
+проверяет безопасные относительные пути и SHA-256 фото и атомарно материализует
+файлы в каталог, названный SHA-256 manifest. Выбор MinIO fail-closed: отсутствующие
+настройки или объект не приводят к локальному fallback.
+
+Проверить/подготовить каталог можно командой
+`uv run --project cv/data_pipeline python -m mgts_data_pipeline.minio_materials`;
+вариант с `--print-path` печатает только абсолютный путь к проверенному manifest.
+
 Контейнер открывает `/data/notebooks/cabinet_review.py` из шаблона `ml_research.py`. При первом запуске
 копируется новый bundled notebook; старый `/data/notebooks/dataset_workbench.py`
 и пользовательские правки остаются нетронутыми. Для изменения сохранённого

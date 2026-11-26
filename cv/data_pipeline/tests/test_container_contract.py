@@ -18,13 +18,13 @@ REPOSITORY_ROOT = Path(__file__).parents[3]
 def _container_entrypoint_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path, dict[str, str]]:
     pipeline_root = REPOSITORY_ROOT / "cv" / "data_pipeline"
     source = tmp_path / "bundled.py"
-    notebook = tmp_path / "persistent" / "cabinet_review.py"
+    notebook = tmp_path / "persistent" / "cabinet_gallery.md"
     script = (pipeline_root / "container-entrypoint.sh").read_text(encoding="utf-8")
     script = script.replace(
-        'NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"',
+        'NOTEBOOK_SOURCE="/app/notebooks/cabinet_gallery.md"',
         f"NOTEBOOK_SOURCE={shlex.quote(str(source))}",
     ).replace(
-        'NOTEBOOK_PATH="/data/notebooks/cabinet_review.py"',
+        'NOTEBOOK_PATH="/data/notebooks/cabinet_gallery.md"',
         f"NOTEBOOK_PATH={shlex.quote(str(notebook))}",
     )
     test_entrypoint = tmp_path / "container-entrypoint.sh"
@@ -137,8 +137,8 @@ def test_container_image_uses_the_locked_ui_dependencies_and_safe_entrypoint() -
     assert "--host 0.0.0.0" in entrypoint
     assert "marimo edit \"$NOTEBOOK_PATH\"" in entrypoint
     assert '--token-password-file "$MARIMO_PASSWORD_FILE"' in entrypoint
-    assert 'NOTEBOOK_PATH="/data/notebooks/cabinet_review.py"' in entrypoint
-    assert 'NOTEBOOK_SOURCE="/app/notebooks/ml_research.py"' in entrypoint
+    assert 'NOTEBOOK_PATH="/data/notebooks/cabinet_gallery.md"' in entrypoint
+    assert 'NOTEBOOK_SOURCE="/app/notebooks/cabinet_gallery.md"' in entrypoint
     assert "cp --no-clobber" in entrypoint
     assert "access_token=)[^&[:space:]]+" in entrypoint
     assert "python -m mgts_data_pipeline.marimo_ai_config" in entrypoint

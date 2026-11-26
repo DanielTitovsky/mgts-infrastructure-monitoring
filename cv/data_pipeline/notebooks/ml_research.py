@@ -10,6 +10,9 @@ app = marimo.App(width="medium")
 def _():
     import hashlib
     import os
+    from mgts_data_pipeline.mlp_predict import predict_upload_head
+    mlp_path = os.environ.get("MGTS_MLP_HEAD", "/data/archive/mgts-final/cabinet-mlp-head-v1.json")
+    from html import escape
     from io import BytesIO
 
     import marimo as mo
@@ -23,6 +26,14 @@ def _():
         load_reference_index,
         retrieve,
     )
+    from mgts_data_pipeline.dataset_review import (
+        AuditDataError,
+        build_audit_rows,
+        load_optional_json,
+        oof_metrics,
+        proposal_preview_bytes,
+        sha256_file,
+    )
     from mgts_data_pipeline.research import (
         ResearchError,
         binary_damage_summary,
@@ -34,12 +45,18 @@ def _():
     manifest_path = os.environ.get("MGTS_FINAL_MANIFEST", "/data/archive/mgts-final/final-materials.json")
     model_path = os.environ.get("MGTS_MODEL_PATH", "/models/best.pt")
     index_path = os.environ.get("MGTS_REFERENCE_INDEX", "/data/output/cabinet-reference-index.json")
+    oof_path = os.environ.get("MGTS_CABINET_OOF", "/data/output/cabinet-oof-predictions-v1.json")
+    box_report_path = os.environ.get("MGTS_BOX_REPORT", "/data/archive/mgts-final/cabinet-boxes.json")
     return (
+        mlp_path, predict_upload_head,
+        AuditDataError,
         BytesIO,
+        escape,
         Image,
         ResearchError,
         binary_damage_summary,
         build_reference_index,
+        build_audit_rows,
         embed_photo,
         evaluate_leave_group_out,
         hashlib,
@@ -47,11 +64,17 @@ def _():
         load_embedder,
         load_material_manifest,
         load_material_sample,
+        load_optional_json,
         load_reference_index,
         manifest_path,
         model_path,
         mo,
+        oof_metrics,
+        oof_path,
+        box_report_path,
+        proposal_preview_bytes,
         preview_image_bytes,
+        sha256_file,
         retrieve,
     )
 
@@ -61,9 +84,9 @@ def _(mo):
     mo.md(r"""
     # Осмотр шкафов и распределительных щитов МГТС
 
-    **Первый снимок уже открыт.** Выберите другой в списке: исходное фото, прогноз модели и ближайший пример сменятся автоматически. Загружать датасет не нужно.
-    Для проверки нового снимка используйте раздел **«Сравнить фотографию»**.
-    Разметка МГТС — эталон; результат алгоритма — предварительная рекомендация.
+    **Все 62 фотографии открыты ниже без загрузки и запуска.** Листайте галерею, ищите по ID или пути, фильтруйте исходные состояния и ошибки «повреждение → норма». На каждой карточке рядом показаны исходный кадр и обработка; рамки детектора — только предложения объекта, не разметка дефекта.
+
+    МГТС задаёт исходную метку состояния. kNN, линейная модель и MLP показывают групповые out-of-fold прогнозы, если готовый артефакт доступен. «Норма» при подтверждённом повреждении отмечена как false negative. Ни одна оценка не является независимой полевой проверкой или решением о ремонте.
     """)
     return
 
@@ -78,18 +101,89 @@ def _():
 
 
 @app.cell(hide_code=True)
-def _(ResearchError, condition_ru, load_material_manifest, manifest_path, mo):
-    """Read only the small JSON inventory on open; do not open photos here."""
+def _(AuditDataError, ResearchError, build_audit_rows, condition_ru, index_path, load_material_manifest, load_optional_json, load_reference_index, manifest_path, mo, oof_path, box_report_path, sha256_file):
+    """Read validated metadata and optional result artifacts on open."""
     try:
         materials = load_material_manifest(manifest_path)
     except (ResearchError, OSError, ValueError) as error:
         materials = None
-        inventory_message = mo.callout(
-            mo.md(f"Не удалось прочитать подготовленный реестр фотографий: {error}"),
-            kind="danger",
-        )
-        photo_options = {}
+        manifest_sha256 = None
+        inventory_error = str(error)
+        inventory_message = mo.callout(mo.md("Не удалось прочитать подготовленный реестр фотографий."), kind="danger")
+        index, index_sha256, index_error = None, None, "реестр фотографий недоступен"
+        oof, oof_error = None, None
+        box_report, box_error = None, None
+        audit_rows = []
     else:
+        manifest_sha256 = sha256_file(materials["path"])
+        inventory_error = None
+        inventory_message = mo.md(
+            f"Реестр: **{materials['sample_count']} фото** · SHA-256 `{manifest_sha256}`. "
+            "Кадр без подписи остаётся в галерее и исключён из оценки."
+        )
+        try:
+            index = load_reference_index(index_path)
+            index_sha256 = sha256_file(index_path)
+            index_error = None
+        except (ValueError, OSError, AuditDataError) as error:
+            index, index_sha256, index_error = None, None, str(error)
+        try:
+            oof = load_optional_json(oof_path, label="grouped OOF predictions")
+            oof_error = None
+        except AuditDataError as error:
+            oof, oof_error = None, str(error)
+        try:
+            box_report = load_optional_json(box_report_path, label="cabinet detector report")
+            box_error = None
+        except AuditDataError as error:
+            box_report, box_error = None, str(error)
+
+        audit_manifest = {"schema_version": 1, "samples": materials["samples"]}
+        audit_index = index
+        accepted_oof = oof if index is not None else None
+        try:
+            audit_rows = build_audit_rows(
+                audit_manifest,
+                audit_index,
+                accepted_oof,
+                manifest_sha256=manifest_sha256,
+                index_sha256=index_sha256,
+            )
+        except AuditDataError as error:
+            if accepted_oof is not None:
+                oof_error = str(error)
+                accepted_oof = None
+                audit_rows = build_audit_rows(
+                    audit_manifest,
+                    audit_index,
+                    None,
+                    manifest_sha256=manifest_sha256,
+                    index_sha256=index_sha256,
+                )
+            else:
+                index_error = index_error or str(error)
+                index = None
+                audit_rows = build_audit_rows(
+                    audit_manifest,
+                    None,
+                    None,
+                    manifest_sha256=manifest_sha256,
+                )
+        if box_report is not None:
+            try:
+                audit_rows = build_audit_rows(
+                    audit_manifest,
+                    index,
+                    accepted_oof,
+                    box_report=box_report,
+                    manifest_sha256=manifest_sha256,
+                    index_sha256=index_sha256,
+                )
+            except AuditDataError as error:
+                box_error = str(error)
+        if box_error:
+            box_report = None
+
         _rows = []
         for _code, _caption in condition_ru.items():
             _records = [r for r in materials["samples"] if r["condition"] == _code]
@@ -100,120 +194,319 @@ def _(ResearchError, condition_ru, load_material_manifest, manifest_path, mo):
                 "Тип не указан": sum(r["object_type"] not in {"ТКШ", "РЩ"} for r in _records),
                 "Всего фото": len(_records),
             })
-        inventory_message = mo.ui.table(
+        _summary_table = mo.ui.table(
             _rows, selection=None, pagination=False, show_search=False,
             show_column_summaries=False, show_data_types=False,
             label=f"Состав выборки · {materials['sample_count']} фото",
         )
-        photo_options = {
-            (
-                f"{sample['object_type']} · {condition_ru.get(sample['condition'], 'Без разметки')} · "
-                f"{sample['object_id']} · {sample['source_folder']}"
-            ): index
-            for index, sample in enumerate(materials["samples"])
-        }
+        inventory_message = mo.vstack([inventory_message, _summary_table])
+    if materials is not None and not inventory_error:
+        _notices = []
+        if index_error:
+            _notices.append(mo.callout(mo.md("Групповой индекс kNN недоступен; не выполняется новое извлечение признаков."), kind="warn"))
+        if oof_error:
+            _notices.append(mo.callout(mo.md("OOF прогнозы не прошли проверку идентичности и групповой изоляции; выводится «не вычислено»."), kind="warn"))
+        elif oof is None:
+            _notices.append(mo.callout(mo.md("Артефакт grouped OOF пока не найден; вместо него не подставляется прогноз kNN или MLP."), kind="warn"))
+        if box_error:
+            _notices.append(mo.callout(mo.md("Отчёт детектора не прошёл проверку; рамки не показываются."), kind="warn"))
+        elif box_report is None:
+            _notices.append(mo.callout(mo.md("Детектор ещё не запускался для текущего набора."), kind="warn"))
+        if _notices:
+            inventory_message = mo.vstack([inventory_message, *_notices])
     inventory_message
-    return materials, photo_options
-
-
-@app.cell(hide_code=True)
-def _(materials, mo, photo_options):
-    if not photo_options:
-        photo_picker = None
-        photo_selector = mo.md("Фотографии недоступны: проверьте реестр и каталог исходных снимков.")
-    else:
-        photo_picker = mo.ui.dropdown(
-            options=photo_options,
-            value=next(iter(photo_options)),
-            searchable=True,
-            label="Выберите фотографию по типу объекта, исходной метке, ID и папке",
-        )
-        photo_selector = photo_picker
-    photo_selector
-    return (photo_picker,)
-
-
-@app.cell(hide_code=True)
-def _(index_path, load_reference_index):
-    try:
-        cabinet_index = load_reference_index(index_path)
-        by_sha = {r["sha256"]: r for r in cabinet_index["records"]}
-        index_error = None
-    except (ValueError, OSError) as _err:
-        cabinet_index, by_sha, index_error = None, {}, str(_err)
-    return by_sha, cabinet_index, index_error
+    return audit_rows, box_error, box_report, index, index_error, inventory_error, manifest_sha256, materials, oof, oof_error
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Фото и прогноз
+    ## Галерея данных, групповых прогнозов и предложений рамок
 
-    Слева — выбранное фото, его разметка МГТС и прогноз алгоритма. Справа — ближайший пример, по которому можно проверить вывод. При сравнении известного фото исключается вся группа этого объекта. **Рамок дефекта нет:** метод оценивает снимок целиком, а не место повреждения.
+    Фильтры влияют только на видимые карточки. Вся выборка остаётся в аудите: каждая строка определяется точной парой относительного пути и SHA-256, а не именем файла. Сетка показывает 12 фото за страницу, чтобы не выгружать все исходные изображения одновременно.
     """)
     return
 
 
 @app.cell(hide_code=True)
-def _(BytesIO, ResearchError, by_sha, cabinet_index, condition_ru, embed_photo, index_error, load_embedder, load_material_sample, materials, mo, model_path, photo_picker, preview_image_bytes, retrieve):
-    if materials is None or photo_picker is None or photo_picker.value is None:
-        photo_review = mo.md("Нет фото для просмотра.")
-    else:
-        try:
-            _sample = load_material_sample(materials["path"], photo_picker.value)
-            _rec = _sample["sample"]
-            _preview = mo.image(
-                BytesIO(preview_image_bytes(_sample["image"], max_edge=800, max_bytes=45000)),
-                alt="Выбранное фото МГТС", width="100%",
+def _(mo):
+    filter_options = {
+        "Все фото": "all",
+        "Повреждение → «норма»": "false_normal",
+        "Исходно нормальные": "normal",
+        "Механическое повреждение": "mechanical_damage",
+        "Дефект покрытия": "coating_damage",
+        "Без разметки": "unknown",
+        "Детектор без рамок": "no_boxes",
+    }
+    audit_search = mo.ui.text(label="Поиск по ID, пути, исходной подписи", placeholder="Например, 40035403")
+    audit_filter = mo.ui.dropdown(options=filter_options, value="Все фото", label="Показывать")
+    gallery_controls = mo.hstack([audit_search, audit_filter], widths="equal", align="end")
+    gallery_controls
+    return audit_filter, audit_search, gallery_controls
+
+
+@app.cell(hide_code=True)
+def _(audit_filter, audit_rows, audit_search, mo):
+    _query = (audit_search.value or "").strip().casefold()
+    _filter_value = audit_filter.value
+    filtered_rows = []
+    for _row in audit_rows:
+        _sample = _row["sample"]
+        if _filter_value == "false_normal" and not _row["false_normal_methods"]:
+            continue
+        if _filter_value == "normal" and _row["true"]["condition"] != "normal":
+            continue
+        if _filter_value in {"mechanical_damage", "coating_damage", "unknown"} and _row["true"]["condition"] != _filter_value:
+            continue
+        if _filter_value == "no_boxes" and _row["box_status"] == "proposals":
+            continue
+        _searchable = " ".join(str(_sample.get(_key, "")) for _key in
+                               ("object_id", "image_path", "object_type", "condition", "status", "description")).casefold()
+        if _query and _query not in _searchable:
+            continue
+        filtered_rows.append(_row)
+
+    # Keep the requested confirmed false-normal example visible first when it exists.
+    _focused = [row for row in filtered_rows if row["sample"].get("object_id") == "40035403"]
+    if _focused:
+        filtered_rows = _focused + [row for row in filtered_rows if row not in _focused]
+    gallery_page_size = 12
+    page_count = max(1, (len(filtered_rows) + gallery_page_size - 1) // gallery_page_size)
+    audit_page = mo.ui.slider(
+        steps=list(range(page_count)), value=0, show_value=True,
+        label=f"Страница · {len(filtered_rows)} из {len(audit_rows)} фото",
+    )
+    audit_page
+    return audit_page, filtered_rows, gallery_page_size
+
+
+@app.cell(hide_code=True)
+def _(BytesIO, ResearchError, AuditDataError, audit_page, audit_rows, condition_ru, escape, filtered_rows, gallery_page_size, load_material_sample, materials, mo, preview_image_bytes, proposal_preview_bytes):
+    audit_by_path = {row["identity"][0]: row for row in audit_rows}
+    _start = int(audit_page.value or 0) * gallery_page_size
+    page_rows = filtered_rows[_start:_start + gallery_page_size]
+    gallery_tiles = []
+    try:
+        for _row in page_rows:
+            _sample = _row["sample"]
+            _manifest_index = next(
+                i for i, item in enumerate(materials["samples"])
+                if item["image_path"] == _row["identity"][0]
+                and item["sha256"].lower() == _row["identity"][1]
             )
-            _truth = condition_ru.get(_rec["condition"], "Без разметки")
-            _left = [mo.md(f"**Фото № {_rec['object_id']}**"), _preview,
-                     mo.md(f"**Разметка МГТС:** {_rec['object_type']} · {_truth}"),
-                     mo.plain(_rec["description"] or "Описание не предоставлено")]
-            if cabinet_index is None:
-                photo_review = mo.vstack(_left + [mo.callout(mo.md(f"Прогноз недоступен: {index_error}"), kind="warn")])
+            _loaded = load_material_sample(materials["path"], _manifest_index)
+            # The manifest index remains the stable display key; exact path+digest were validated before this read.
+            _original_bytes = preview_image_bytes(_loaded["image"], max_edge=280, max_bytes=16_000)
+            _processed_bytes = None
+            if _row["box_status"] == "proposals":
+                _processed_bytes = proposal_preview_bytes(
+                    _loaded["image"], _row["boxes"], expected_size=(_loaded["width"], _loaded["height"]),
+                    max_edge=280, max_bytes=16_000,
+                )
+            elif _row["box_status"] == "empty":
+                _processed_bytes = _original_bytes
+            _original = mo.image(BytesIO(_original_bytes), alt="Исходное фото", width="100%")
+            if _processed_bytes is None:
+                _processed = mo.callout(mo.md("Детектор ещё не запускался"), kind="warn")
             else:
-                _cached = by_sha.get(_sample["sha256"])
-                _vec = (_cached["embedding"] if _cached else embed_photo(
-                    load_embedder(model_path), _rec["image_path"], _sample["image_bytes"]))
-                _prediction = retrieve(cabinet_index, _vec, top_k=5,
-                    exclude_sha256=_sample["sha256"], exclude_object_id=_rec["object_id"],
-                    exclude_group_id=_cached["group_id"] if _cached else None)
-                _type = _prediction["tentative"]["object_type"] or "Не определён"
-                _condition = condition_ru.get(_prediction["tentative"]["condition"], "Не определено")
-                _left += [mo.md(f"**Прогноз модели:** {_type} · {_condition}"),
-                          mo.md("**Действие:** требуется проверка специалиста.")]
-                _matches = _prediction["matches"]
-                if _matches:
-                    _nearest = _matches[0]
-                    _idx = next(i for i,r in enumerate(materials["samples"]) if r["image_path"] == _nearest["image_path"])
-                    _ref = load_material_sample(materials["path"], _idx)
-                    _right = [mo.md(f"**Ближайший пример · № {_nearest['object_id']}**"),
-                              mo.image(BytesIO(preview_image_bytes(_ref["image"], max_edge=800, max_bytes=45000)),
-                                       alt="Ближайший эталон, найденный моделью", width="100%"),
-                              mo.md(f"**Разметка эталона:** {_nearest['object_type']} · "
-                                    f"{condition_ru.get(_nearest['condition'], 'Без разметки')}"),
-                              mo.md(f"Косинусное сходство: **{_nearest['similarity']:.3f}** (не вероятность).")]
-                    photo_review = mo.hstack([mo.vstack(_left), mo.vstack(_right)], widths="equal", align="start")
-                else:
-                    photo_review = mo.vstack(_left)
-        except (ResearchError, OSError, ValueError, RuntimeError, StopIteration) as _err:
-            photo_review = mo.callout(mo.md(f"Не удалось сравнить выбранное фото с эталонами: {_err}"), kind="danger")
-    photo_review
-    return
+                _processed = mo.image(BytesIO(_processed_bytes), alt="Фото после обработки детектором", width="100%")
+
+            _status = {
+                "not_run": "детектор не запускался",
+                "empty": "объект не найден",
+                "proposals": f"рамок: {len(_row['boxes'])} · предложения объекта, не дефекта",
+            }[_row["box_status"]]
+            _truth = f"{_sample['object_type']} · {condition_ru.get(_sample['condition'], 'Без разметки')}"
+            _predictions = []
+            for _method, _name in (("knn_k5", "kNN"), ("linear_ridge", "Ridge"), ("supervised_mlp", "MLP")):
+                _prediction = _row["predictions"][_method]
+                _label = "не вычислено" if _prediction is None else condition_ru.get(_prediction["condition"], "не классифицировано")
+                _predictions.append(f"{_name}: {_label}")
+            _description = escape(str(_sample.get("description") or "Описание не предоставлено"))
+            _source = escape(str(_sample.get("source_folder", "")))
+            _fn_notice = "**FALSE NORMAL — нужен разбор специалиста.**  \n" if _row["false_normal_methods"] else ""
+            _card_text = mo.md(
+                f"**Фото № {escape(str(_sample['object_id']))} · {escape(str(_sample['image_path']))}**  \n"
+                f"МГТС: **{escape(_truth)}**  \n"
+                f"{' · '.join(_predictions)}  \n"
+                f"**Рамки:** {_status}  \n"
+                f"{_fn_notice}"
+                f"Папка: {_source}  \n{_description}"
+            )
+            gallery_tiles.append(
+                mo.vstack([
+                    mo.hstack([_original, _processed], widths="equal", align="start"),
+                    _card_text,
+                ])
+            )
+    except (ResearchError, AuditDataError, OSError, ValueError, RuntimeError, StopIteration) as _error:
+        gallery = mo.callout(mo.md("Не удалось подготовить ограниченные миниатюры галереи."), kind="danger")
+    else:
+        _rows_of_tiles = [mo.hstack(gallery_tiles[i:i + 2], widths="equal", align="start")
+                          for i in range(0, len(gallery_tiles), 2)]
+        if not _rows_of_tiles:
+            gallery = mo.md("По заданным фильтрам фотографий нет.")
+        else:
+            gallery = mo.vstack(_rows_of_tiles)
+    gallery_view = mo.vstack([audit_page, gallery])
+    gallery_view
+    return audit_by_path, gallery_view, page_rows
+
+
+@app.cell(hide_code=True)
+def _(audit_by_path, materials, mo):
+    if not audit_by_path:
+        detail_picker = None
+        detail_picker_view = mo.md("Подробный просмотр появится, когда будет доступен реестр фотографий.")
+    else:
+        detail_options = {
+            f"№ {sample['object_id']} · {sample['image_path']}": sample["image_path"]
+            for sample in materials["samples"]
+        }
+        focus_key = next(
+            (label for label, path in detail_options.items()
+             if audit_by_path[path]["sample"].get("object_id") == "40035403"),
+            next(iter(detail_options)),
+        )
+        detail_picker = mo.ui.dropdown(
+            options=detail_options,
+            value=focus_key,
+            searchable=True,
+            label="Фото для крупного просмотра (исходное / обработанное)",
+        )
+        detail_picker_view = detail_picker
+    detail_picker_view
+    return (detail_picker,)
+
+
+@app.cell(hide_code=True)
+def _(BytesIO, AuditDataError, ResearchError, audit_by_path, condition_ru, detail_picker, escape, index, load_material_sample, materials, mo, preview_image_bytes, proposal_preview_bytes, retrieve):
+    from collections import Counter
+
+    if not audit_by_path or detail_picker is None:
+        detail_view = mo.md("Подробный просмотр появится, когда будет доступен реестр фотографий.")
+    else:
+        detail_path = detail_picker.value
+        detail_row = audit_by_path[detail_path]
+        _sample = detail_row["sample"]
+        _manifest_index = next(
+            i for i, item in enumerate(materials["samples"])
+            if item["image_path"] == detail_row["identity"][0]
+            and item["sha256"].lower() == detail_row["identity"][1]
+        )
+        try:
+            _loaded = load_material_sample(materials["path"], _manifest_index)
+            _source_bytes = preview_image_bytes(_loaded["image"], max_edge=900, max_bytes=100_000)
+            _original_view = mo.image(BytesIO(_source_bytes), alt="Исходная фотография", width="100%")
+            if detail_row["box_status"] == "proposals":
+                _processed_bytes = proposal_preview_bytes(
+                    _loaded["image"], detail_row["boxes"],
+                    expected_size=(_loaded["width"], _loaded["height"]),
+                    max_edge=900, max_bytes=100_000,
+                )
+                _processed_view = mo.image(BytesIO(_processed_bytes), alt="Фото с наложенными предложениями детектора", width="100%")
+            elif detail_row["box_status"] == "empty":
+                _processed_view = mo.vstack([
+                    mo.image(BytesIO(_source_bytes), alt="Исходное фото без рамок детектора", width="100%"),
+                    mo.md("**Объект не найден:** для этого фото детектор завершился, список рамок пуст.")
+                ])
+            else:
+                _processed_view = mo.callout(
+                    mo.md("**Детектор ещё не запускался для этого фото.** Исходный кадр не изменён."),
+                    kind="warn",
+                )
+            _original_column = mo.vstack([
+                mo.md("### Исходный кадр"),
+                _original_view,
+                mo.md(f"**МГТС:** {escape(str(_sample['object_type']))} · "
+                      f"{escape(condition_ru.get(_sample['condition'], 'Без разметки'))}  \n"
+                      f"**Исходное описание:** {escape(str(_sample.get('description') or 'не предоставлено'))}"),
+            ])
+            _processed_column = mo.vstack([
+                mo.md("### Детектор объекта"),
+                _processed_view,
+                mo.md("Рамки локализуют только предполагаемый объект. Они не локализуют повреждение и не являются размёткой качества."),
+            ])
+            _prediction_rows = []
+            for _method, _title in (("knn_k5", "kNN k=5"), ("linear_ridge", "Linear Ridge"), ("supervised_mlp", "MLP")):
+                _prediction = detail_row["predictions"][_method]
+                _prediction_rows.append({
+                    "Модель": _title,
+                    "Тип объекта": "не вычислено" if _prediction is None else _prediction["object_type"],
+                    "Состояние": "не вычислено" if _prediction is None else condition_ru.get(_prediction["condition"], "не классифицировано"),
+                })
+            detail_parts = [
+                detail_picker,
+                mo.md(f"## Фото № {escape(str(_sample['object_id']))}  \n`{escape(detail_path)}` · SHA-256 `{detail_row['identity'][1]}`"),
+                mo.hstack([_original_column, _processed_column], widths="equal", align="start"),
+                mo.md("### Истина МГТС и out-of-fold прогнозы (групповая оценка)"),
+                mo.ui.table(_prediction_rows, selection=None, pagination=False, show_search=False,
+                            show_data_types=False, show_download=False),
+            ]
+            _condition_truth = detail_row["true"]["condition"]
+            _predicted_normal = [
+                _title for _method, _title in (("knn_k5", "kNN"), ("linear_ridge", "Linear Ridge"), ("supervised_mlp", "MLP"))
+                if (detail_row["predictions"][_method] or {}).get("condition") == "normal"
+            ]
+            if _condition_truth in {"mechanical_damage", "coating_damage"} and _predicted_normal:
+                detail_parts.append(mo.callout(
+                    mo.md("**FALSE NORMAL:** исходная метка указывает повреждение, а прогноз «норма» дали "
+                          + ", ".join(_predicted_normal) + ". Этот случай требует экспертной проверки."),
+                    kind="danger",
+                ))
+            _cached = detail_row["index_record"]
+            if index is None or _cached is None:
+                neighbor_view = mo.md("Пять ближайших групп недоступны: готовый локальный индекс не найден.")
+            else:
+                _neighbor_result = retrieve(index, _cached["embedding"], top_k=5,
+                                           exclude_group_id=detail_row["group_id"])
+                _neighbors = _neighbor_result["matches"]
+                _votes = Counter(item["condition"] for item in _neighbors)
+                _vote_summary = " · ".join(
+                    f"{condition_ru.get(label, label)} — {count}"
+                    for label, count in sorted(_votes.items(), key=lambda pair: (-pair[1], pair[0]))
+                ) or "нет независимых соседей"
+                _neighbor_rows = [
+                    {
+                        "№": position,
+                        "ID примера": item["object_id"],
+                        "Исходная метка": condition_ru.get(item["condition"], "Без разметки"),
+                        "Группа": item["group_id"],
+                        "Косинус (не вероятность)": f"{item['similarity']:.4f}",
+                    }
+                    for position, item in enumerate(_neighbors, start=1)
+                ]
+                _neighbor_view = mo.vstack([
+                    mo.md(f"#### Голоса ближайших пяти: **{escape(_vote_summary)}**. "
+                          "Группа выбранного объекта исключена из поиска."),
+                    mo.ui.table(_neighbor_rows, selection=None, pagination=False,
+                                show_search=False, show_data_types=False, show_download=False),
+                ])
+                if _sample.get("object_id") == "40035403":
+                    detail_parts.append(mo.callout(
+                        mo.md("Для № 40035403 подтверждён false negative: исходная метка — "
+                              "механическое повреждение, kNN — «норма»; голоса 5 ближайших: "
+                              f"**{escape(_vote_summary)}**."),
+                        kind="danger",
+                    ))
+                neighbor_view = _neighbor_view
+            detail_parts.extend([mo.md("### Ближайшие примеры и голосование kNN"), neighbor_view])
+            detail_view = mo.vstack(detail_parts)
+        except (ResearchError, AuditDataError, OSError, ValueError, RuntimeError, StopIteration) as error:
+            detail_view = mo.callout(mo.md("Не удалось подготовить крупный просмотр и сведения о соседях."), kind="danger")
+    detail_view
+    return detail_view,
 
 
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Как работает поиск по разметке
+    ## Как работает поиск и построение повторного индекса
 
-    Оценка по готовому индексу выводится автоматически. Только построение нового индекса требует подтверждения.
-    Существующий checkpoint не обучался на шкафах или их повреждениях. Здесь
-    он используется только как источник
-    векторных признаков для поиска похожих примеров. Сходство — **не
-    вероятность, не диагноз и не прогноз ремонта**. Никакие веса не скачиваются,
-    модель не переобучается, файлы фотографий не копируются в индекс.
+    Галерея не запускает модель. Все подписи предсказаний взяты из сохранённых grouped OOF fold-артефактов; неизвестный кадр не классифицируется. Только ручное раскрытие подробностей вычисляет топ-5 по уже кэшированному вектору выбранного изображения.
+
+    Существующий pole checkpoint не обучался на шкафах или повреждениях. Он только ранее получил frozen image features для сравнительных экспериментов. Сходство — **не вероятность, диагноз или прогноз ремонта**. Никакие веса не скачиваются, снимки не передаются, а новый индекс не строится без явного подтверждения.
     """)
     return
 
@@ -279,126 +572,73 @@ def _(mo):
 
 
 @app.cell(hide_code=True)
-def _(ResearchError, binary_damage_summary, cabinet_index, evaluate_leave_group_out, mo):
-    if cabinet_index is None:
-        evaluation_result = mo.md("Для оценки нужен готовый индекс примеров.")
+def _(audit_rows, mo, oof_metrics):
+    comparison = oof_metrics(audit_rows)
+    if comparison is None:
+        evaluation_result = mo.callout(
+            mo.md("**Grouped OOF не вычислено.** Нет прошедших проверку cross-fitted прогнозов; kNN, Ridge и MLP не подменяют отсутствующий артефакт друг другом."),
+            kind="warn",
+        )
     else:
-        try:
-            evaluation = evaluate_leave_group_out(cabinet_index, top_k=5)
-        except (ResearchError, OSError, ValueError, RuntimeError) as error:
-            evaluation_result = mo.callout(mo.md(f"Не удалось оценить индекс: {error}"), kind="danger")
-        else:
-            def metric_table(label: str, metrics: dict) -> tuple[object, object]:
-                classes = metrics["labels"]
-                columns = classes + (["unretrieved"] if metrics["no_independent_reference"] else [])
-                confusion = metrics["confusion_matrix"]
-                class_rows = []
-                for class_name in classes:
-                    true_positive = confusion[class_name][class_name]
-                    support = sum(confusion[class_name].values())
-                    false_positive = sum(
-                        confusion[other].get(class_name, 0)
-                        for other in classes
-                        if other != class_name
+        method_names = {
+            "knn_k5": "kNN (k=5)",
+            "linear_ridge": "Linear Ridge",
+            "supervised_mlp": "Supervised MLP",
+        }
+        comparison_rows = []
+        confusion_rows = []
+        class_rows = []
+        for method, title in method_names.items():
+            values = comparison[method]
+            condition = values["condition"]
+            object_type = values["object_type"]
+            binary = values["condition_binary_damage_vs_normal"]
+            comparison_rows.append({
+                "Модель": title,
+                "Покрытие": f"{condition['covered_count']}/{condition['count']} ({condition['coverage']:.1%})",
+                "Тип · accuracy": f"{object_type['accuracy']:.3f}",
+                "Тип · macro-F1": f"{object_type['macro_f1']:.3f}",
+                "Состояние · accuracy": f"{condition['accuracy']:.3f}",
+                "Состояние · macro-F1": f"{condition['macro_f1']:.3f}",
+                "Бинарный TP/FP/FN/TN": f"{binary['tp']}/{binary['fp']}/{binary['fn']}/{binary['tn']}",
+                "Повреждение→норма": values["false_normal"],
+                "Бинарный precision / recall / F1": f"{binary['precision']:.3f} / {binary['recall']:.3f} / {binary['f1']:.3f}",
+            })
+            for target, target_name in (("object_type", "Тип объекта"), ("condition", "Исходная метка состояния")):
+                metrics = values[target]
+                labels = metrics["labels"]
+                matrix = metrics["confusion_matrix"]
+                for actual in labels:
+                    confusion_rows.append(
+                        {"Модель": title, "Цель": target_name, "По МГТС ↓": actual}
+                        | {predicted: matrix[actual][predicted] for predicted in labels + ["не вычислено"]}
                     )
-                    precision = true_positive / (true_positive + false_positive) if true_positive + false_positive else 0.0
-                    recall = true_positive / support if support else 0.0
-                    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
-                    class_rows.append(
-                        {
-                            "Класс": class_name,
-                            "Образцов": support,
-                            "Precision": f"{precision:.3f}",
-                            "Recall": f"{recall:.3f}",
-                            "F1": f"{f1:.3f}",
-                        }
-                    )
-                confusion_rows = [
-                    {"Исходный класс ↓ / найденный пример →": actual}
-                    | {predicted: confusion[actual][predicted] for predicted in columns}
-                    for actual in classes
-                ]
-                class_table = mo.ui.table(
-                    class_rows,
-                    selection=None,
-                    show_search=False,
-                    show_data_types=False,
-                    show_download=False,
-                    label=f"Метрики по классам: {label}",
-                )
-                confusion_table = mo.ui.table(
-                    confusion_rows,
-                    selection=None,
-                    show_search=False,
-                    show_data_types=False,
-                    show_download=False,
-                    label=f"Таблица ошибок: {label}",
-                )
-                return class_table, confusion_table
-
-            object_tables = metric_table("тип объекта", evaluation["metrics"]["object_type"])
-            condition_metrics = evaluation["metrics"]["condition"]
-            condition_tables = metric_table("исходная метка состояния", condition_metrics)
-            dispatcher = binary_damage_summary(condition_metrics)
-            if dispatcher is None:
-                dispatch_view = mo.callout(
-                    mo.md(
-                        "Диспетчерская сводка «повреждение / исходно нормальное» не рассчитана: "
-                        "в наборе должны присутствовать все три исходные метки `coating_damage`, "
-                        "`mechanical_damage` и `normal`."
-                    ),
-                    kind="warn",
-                )
-            else:
-                dispatch_view = mo.ui.table(
-                    [
-                        {
-                            "TP": dispatcher["tp"],
-                            "FP": dispatcher["fp"],
-                            "FN": dispatcher["fn"],
-                            "TN": dispatcher["tn"],
-                            "Не классифицировано": dispatcher["unclassified"],
-                            "Precision": f"{dispatcher['precision']:.3f}",
-                            "Recall": f"{dispatcher['recall']:.3f}",
-                            "F1": f"{dispatcher['f1']:.3f}",
-                        }
-                    ],
-                    selection=None,
-                    show_search=False,
-                    show_data_types=False,
-                    show_download=False,
-                    label="Диспетчерская сводка: повреждение против исходно нормального",
-                )
-            evaluation_result = mo.vstack(
-                [
-                    mo.callout(
-                        mo.md(
-                            "Только исследовательская оценка малого набора с группировкой по ID/SHA-256. "
-                            "Это не независимая полевая проверка и не гарантия качества на новых районах."
-                        ),
-                        kind="warn",
-                    ),
-                    mo.md(
-                        f"Проверено образцов: **{evaluation['reference_count']}**; независимых групп ID/SHA-256: "
-                        f"**{evaluation['groups']}**. Точность поиска по типу объекта: "
-                        f"**{evaluation['metrics']['object_type']['accuracy']:.3f}**; по исходной метке состояния: "
-                        f"**{evaluation['metrics']['condition']['accuracy']:.3f}**; macro-F1 по трём исходным меткам: "
-                        f"**{evaluation['metrics']['condition']['macro_f1']:.3f}**. "
-                        "Эти цифры описывают только текущий небольшой набор."
-                    ),
-                    mo.md("### Диспетчерская бинарная сводка: два вида повреждения объединены против `normal`"),
-                    dispatch_view,
-                    mo.md("### Тип объекта: метрики по классам"),
-                    object_tables[0],
-                    mo.md("#### Матрица ошибок: строки — исходные подписи, столбцы — найденная подпись"),
-                    object_tables[1],
-                    mo.md("### Исходная метка состояния: метрики по классам"),
-                    condition_tables[0],
-                    mo.md("#### Матрица ошибок: строки — исходные подписи, столбцы — найденная подпись"),
-                    condition_tables[1],
-                    mo.md("**Ограничения:**\n\n" + "\n".join(f"- {item}" for item in evaluation["limitations"])),
-                ]
-            )
+                for label, score in metrics["per_class"].items():
+                    class_rows.append({
+                        "Модель": title,
+                        "Цель": target_name,
+                        "Класс": label,
+                        "Образцов": score["support"],
+                        "Precision": f"{score['precision']:.3f}",
+                        "Recall": f"{score['recall']:.3f}",
+                        "F1": f"{score['f1']:.3f}",
+                        "TP/FP/FN/TN": f"{score['tp']}/{score['fp']}/{score['fn']}/{score['tn']}",
+                    })
+        evaluation_result = mo.vstack([
+            mo.callout(
+                mo.md("Проверка воспроизводит **leave-one-object-or-exact-SHA-group-out** на 61 размеченном фото и 60 объединённых группах; unknown исключён. kNN, Ridge и MLP получают одни и те же held-out фото. Ridge и MLP переобучены внутри каждого train-fold на frozen features: по 60 фото / 59 групп на fold; полный head не оценивался как independent test."),
+                kind="warn",
+            ),
+            mo.ui.table(comparison_rows, selection=None, pagination=False, show_search=False,
+                        show_data_types=False, show_download=False, label="Сравнение моделей · grouped OOF"),
+            mo.md("### Ошибки: строки — исходная метка, столбцы — прогноз"),
+            mo.ui.table(confusion_rows, selection=None, pagination=False, show_search=False,
+                        show_data_types=False, show_download=False),
+            mo.md("### Метрики по классам"),
+            mo.ui.table(class_rows, selection=None, pagination=False, show_search=False,
+                        show_data_types=False, show_download=False),
+            mo.md("**Критическое ограничение:** 61 кадр из небольшой организаторской выборки, 60 ID/SHA-групп; нет независимой полевой выборки. Высокая точность здесь не доказывает переносимость. Любой FN требует отдельной проверки специалистом."),
+        ])
     evaluation_result
     return
 
@@ -436,6 +676,7 @@ def _(
     mo,
     preview_image_bytes,
     query_image,
+    audit_rows, mlp_path, predict_upload_head, sha256_file,
     index_path,
     model_path,
     manifest_path,
@@ -454,12 +695,23 @@ def _(
                 embedder = load_embedder(model_path)
                 vector = embed_photo(embedder, upload.name, upload.contents)
                 uploaded_sha256 = hashlib.sha256(upload.contents).hexdigest()
+                _known = next((r for r in audit_rows if r["sample"]["sha256"] == uploaded_sha256), None)
                 matches = retrieve(
                     reference_index,
                     vector,
                     top_k=5,
                     exclude_sha256=uploaded_sha256,
+                    exclude_group_id=_known["group_id"] if _known else None,
                 )
+                if _known and _known["evaluation_status"] == "evaluated":
+                    _mlp = _known["predictions"]["supervised_mlp"]
+                elif _known and _known["true"]["condition"] != "unknown":
+                    _mlp = None
+                else:
+                    try:
+                        _mlp = predict_upload_head(mlp_path, vector, checkpoint_sha256=sha256_file(model_path))
+                    except (ValueError, OSError):
+                        _mlp = None
                 query_materials = load_material_manifest(manifest_path)
                 with Image.open(BytesIO(upload.contents)) as source_image:
                     upload_preview = preview_image_bytes(source_image)
@@ -474,9 +726,12 @@ def _(
                     ),
                     mo.md("### Предварительный результат"),
                     mo.ui.table(
-                        [{"Тип объекта": matches["tentative"]["object_type"] or "Не определён",
+                        [{"Модель":"kNN", "Тип объекта": matches["tentative"]["object_type"] or "Не определён",
                           "Состояние": condition_ru.get(matches["tentative"]["condition"], "Не определено"),
-                          "Рекомендация": "Проверить вручную"}],
+                          "Рекомендация": "Проверить вручную"},
+                         {"Модель":"MLP", "Тип объекта": (_mlp or {}).get("object_type") or "Не вычислено",
+                          "Состояние": condition_ru.get((_mlp or {}).get("condition"), "Не вычислено"),
+                          "Рекомендация":"Проверить вручную"}],
                         selection=None, pagination=False, show_data_types=False,
                     ),
                     mo.md("Ниже — похожие размеченные фото. Сходство не равно вероятности повреждения."),

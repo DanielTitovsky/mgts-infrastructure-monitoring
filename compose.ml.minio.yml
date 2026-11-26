@@ -1,0 +1,26 @@
+# Private hosted overlay. Only the S3 proxy joins the application network.
+services:
+  dataset-origin:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    command: ["caddy", "reverse-proxy", "--from", "http://:8080", "--to", "http://minio:9000"]
+    networks: [default, storage]
+  workbench:
+    environment:
+      MGTS_DATASET_S3_ENDPOINT: http://dataset-origin:8080
+      MGTS_DATASET_S3_BUCKET: mgts-hackathon
+      MGTS_DATASET_S3_PREFIX: final-2026
+    secrets:
+      - dataset_access_key
+      - dataset_secret_key
+    depends_on:
+      dataset-origin: {condition: service_started}
+networks:
+  storage:
+    external: true
+    name: mgts-preview-current-fnnfi5_default
+secrets:
+  dataset_access_key:
+    file: ${MGTS_READER_ACCESS_FILE:-.secrets/dataset_access_key}
+  dataset_secret_key:
+    file: ${MGTS_READER_SECRET_FILE:-.secrets/dataset_secret_key}

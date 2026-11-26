@@ -17,6 +17,20 @@ def test_screen_uses_native_markdown_and_structured_outputs():
     assert all("hide_code=True" in ast.unparse(f.decorator_list[0]) for f in funcs)
 
 
+def test_photo_audit_is_a_bounded_searchable_gallery_not_a_table_selector():
+    path = Path(__file__).parents[1] / "notebooks" / "ml_research.py"
+    source = path.read_text()
+    assert "gallery_page_size = 12" in source
+    assert "mo.ui.text(label=\"Поиск по ID, пути, исходной подписи\"" in source
+    assert "mo.ui.slider(" in source
+    assert "mo.ui.dropdown(" in source
+    assert "selection=\"single\"" not in source
+    assert "mo.plain(" not in source
+    assert "«не вычислено»" in source
+    assert "FALSE NORMAL" in source
+    assert "40035403" in source
+
+
 def test_team_assistant_uses_optional_independent_settings_without_personal_keys():
     import yaml
     compose = yaml.safe_load((Path(__file__).parents[3] / "compose.ml.yml").read_text())
