@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import math
 from pathlib import Path
 
 RAW_PREFIX = "/uploads/raw/"
@@ -39,6 +40,9 @@ class ClassRule:
 
 
 CLASS_RULES: dict[str, ClassRule] = {
+    # Generic pole-localization class (from the optional workbench checkpoint) is not a defect.
+    "odn_pole": ClassRule(kind="object", object_type="support"),
+
     # --- Колодцы (кабельные колодцы / люки): у модели есть оценка состояния ---
     "Good":      ClassRule(kind="object", object_type="cable_manhole"),  # исправная крышка
     "Broken":    ClassRule("defect", "cable_manhole", severity="high",   action="repair"),  # сломана крышка
@@ -76,7 +80,7 @@ class DefectRecord:
     confidence: float
     severity: str
     action: str
-    bbox: tuple[float, float, float, float]
+    bbox: tuple[float, float, float, float] | None
 
 
 @dataclass
@@ -229,3 +233,14 @@ def gps_from_image(path: Path) -> tuple[float, float] | None:
     if lat == 0 and lon == 0:  # «нулевой остров» — типичный мусор от камер без GPS-фикса
         return None
     return round(lat, 6), round(lon, 6)
+
+
+def classifier_outcome(label: str, score: float) -> Outcome:
+    """Team image-level classifier returns probabilities, never XYXY boxes."""
+    if label not in {"mp_rsh", "ok_tksh"} or not math.isfinite(score) or not 0 <= score <= 1:
+        raise ValueError("Unexpected cabinet classification")
+    damaged = label == "mp_rsh"
+    status = STATUS_CHECK if damaged else STATUS_OK
+    return Outcome(object_type="РЩ" if damaged else "ТКШ", status=status,
+                   defects=[DefectRecord(label, score, "medium", "check", None)] if damaged else [],
+                   summary=f"class={label} score={score:.3f} status={status}")

@@ -20,6 +20,34 @@ services:
       JWT_SECRET: ${MGTS_JWT_SECRET:?required}
       AUTH_REQUIRED: 'true'
       JWT_EXPIRES_MINUTES: '43200' # Existing Bearer API clients; browser Basic caching is user-agent controlled.
+  worker:
+    build:
+      context: .
+      dockerfile: backend/worker.Dockerfile
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: preview
+      DB_PASSWORD: ${MGTS_DB_PASSWORD:?required}
+      DB_NAME: mgts
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: preview
+      S3_SECRET_KEY: ${MGTS_STORAGE_PASSWORD:?required}
+      S3_BUCKET: mgts-preview
+      UPLOADS_DIR: /app/uploads
+      WEIGHTS_PATH: /weights/best.pt
+      CV_IMGSZ: "900"
+    volumes:
+      - uploads:/app/uploads
+      - ./cv/ml/yolo-v/best.pt:/weights/best.pt:ro
+    depends_on:
+      db:
+        condition: service_healthy
+      schema-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_started
   frontend:
     extends: {file: compose.preview.yml, service: frontend}
     ports: !reset []

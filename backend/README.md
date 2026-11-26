@@ -97,6 +97,7 @@ python worker.py
 | `GET`/`POST` | `/api/infrastructure-objects`, `/{id}` | Объекты инфраструктуры |
 | `PUT`/`DELETE` | `/api/infrastructure-objects/{id}` | Обновление и удаление |
 | `POST` | `/api/infrastructure-objects/{id}/photo` | Загрузка или замена фото (multipart-поле `file`) |
+| `POST` | `/api/infrastructure-objects/{id}/reprocess` | Повторно поставить одно существующее фото в очередь (202; требует авторизации в hosted-режиме) |
 | `GET` | `/api/infrastructure-objects/{id}/photo` | Фото объекта из MinIO |
 | `DELETE` | `/api/infrastructure-objects/{id}/photo` | Удаление фото |
 | `GET`/`POST` | `/api/defects`, `/api/defects/{id}` | Дефекты |
@@ -209,6 +210,19 @@ worker.py  -- раз в WORKER_POLL_INTERVAL секунд берёт один о
 Воркер запускается отдельным процессом/сервисом (`docker compose up -d worker`),
 не внутри API. Общий том `uploads_data` нужен, чтобы backend раздавал
 `/uploads/processed/*`, а веса монтируются с хоста `./cv/ml/yolo-v:/weights:ro`.
+
+Для ручного повтора отправьте `POST /api/infrastructure-objects/{id}/reprocess`
+с существующей Basic или Bearer авторизацией. API атомарно ставит только один
+объект в `awaiting_processing`; перезапуск сервиса не нужен. Ответ `409`
+означает, что объект уже обрабатывается, у него нет фото или ключ фото не
+поддерживается воркером. Старый результат и ручные дефекты не удаляются этим
+запросом; CV-дефекты обновляются только при успешной обработке.
+
+Hosted Dokploy использует точный checkpoint `cv/ml/yolo-v/2-version.pt`.
+Его классы (`Broken`, `Good`, `Lose`, `Uncovered` и классы опор/оборудования)
+не являются cabinet-specific моделью. Generic-класс `odn_pole` считается
+только локализацией опоры и требует проверки (`check_required`); ни он, ни
+текущий checkpoint не доказывают состояние шкафа.
 
 ## Переменные окружения
 
