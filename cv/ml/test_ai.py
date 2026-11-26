@@ -3,13 +3,13 @@ from ultralytics import YOLO
 
 # работа с камерой и видео
 
-model = YOLO('yolo-v/2-version.pt') # основная тренируемая моделька будет
+model = YOLO('yolo-v/best.pt') # основная тренируемая моделька будет
 
 # ===================   photo  ===================
 results = model.predict(
-    source='test/images/10fc934a-4d6d-4cea-869b-bcf92bf6c77f_jpg.rf.ddc7e3eb0a7e19c475f0722a22bc4734.jpg',
+    source='35453688.jpg',
     # target_size=(416, 416),
-    imgsz=640 ,
+    imgsz=900 ,
     conf=0.4 ,
     iou=0.1 ,
     save=True
