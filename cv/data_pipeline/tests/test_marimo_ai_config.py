@@ -7,7 +7,6 @@ import threading
 import tomllib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -50,19 +49,25 @@ def test_native_ai_is_off_without_an_explicit_complete_operator_config() -> None
 def test_operator_models_are_qualified_and_key_is_only_an_env_reference() -> None:
     secret = "test-key-that-must-never-be-written"
     config = build_marimo_ai_config(
-        _operator_env("https://proxy.example/v1", secret, "fast-model,accurate-model")
+        _operator_env(
+            "https://proxy.example/v1",
+            secret,
+            "gpt-6.2-sol,gpt-6.2-astra",
+        )
     )
     ai = config["ai"]
-    models = ["mgts/fast-model", "mgts/accurate-model"]
+    base_models = ["gpt-6.2-sol", "gpt-6.2-astra"]
+    efforts = ["low", "medium", "high", "xhigh", "max"]
+    models = [f"mgts/{model}({effort})" for model in base_models for effort in efforts]
 
     assert ai["enabled"] is True
     assert ai["allow_provider_config"] is False
     assert ai["inline_tooltip"] is False
     assert ai["models"]["displayed_models"] == models
     assert ai["models"]["custom_models"] == models
-    assert ai["models"]["chat_model"] == models[0]
-    assert ai["models"]["edit_model"] == models[0]
-    assert ai["models"]["autocomplete_model"] == models[0]
+    assert ai["models"]["chat_model"] == "mgts/gpt-6.2-sol(high)"
+    assert ai["models"]["edit_model"] == "mgts/gpt-6.2-sol(high)"
+    assert ai["models"]["autocomplete_model"] == "mgts/gpt-6.2-sol(high)"
     assert config["runtime"] == {
         "auto_instantiate": True,
         "on_cell_change": "autorun",
@@ -72,6 +77,25 @@ def test_operator_models_are_qualified_and_key_is_only_an_env_reference() -> Non
         "api_key": f"env:{AI_API_KEY_ENV}",
     }
     assert secret not in repr(config)
+
+
+@pytest.mark.parametrize(
+    "model_ids",
+    [
+        "gpt-6.2-sol",
+        "gpt-6.2-astra",
+        "gpt-6.2-sol,gpt-6.2-sol",
+        "gpt-6.2-sol(low),gpt-6.2-astra",
+        "gpt-6.2-sol,gpt-6.2-astra,gpt-6.1-sol",
+    ],
+)
+def test_model_allowlist_rejects_unverified_or_incomplete_model_sets(
+    model_ids: str,
+) -> None:
+    with pytest.raises(ValueError, match="model allowlist"):
+        build_marimo_ai_config(
+            _operator_env("https://proxy.example/v1", "key", model_ids)
+        )
 
 
 @pytest.mark.parametrize(
@@ -116,7 +140,11 @@ def test_valid_config_file_is_redacted_by_marimo_before_ui_serialization(
     secret = "runtime-only-test-key"
     enabled = write_marimo_ai_config(
         config_path,
-        _operator_env("https://proxy.example/v1", secret, "chat-model"),
+        _operator_env(
+            "https://proxy.example/v1",
+            secret,
+            "gpt-6.2-sol,gpt-6.2-astra",
+        ),
     )
 
     config = tomllib.loads(config_path.read_text(encoding="utf-8"))
@@ -129,19 +157,23 @@ def test_valid_config_file_is_redacted_by_marimo_before_ui_serialization(
     assert secret not in config_path.read_text(encoding="utf-8")
 
 
-def test_native_marimo_adapter_uses_the_selected_model_against_local_mock(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    selected_model = "second-local-model"
+def test_native_marimo_adapter_uses_the_selected_model_against_local_mock() -> None:
     api_key = "local-test-only-key"
-    state: dict[str, Any] = {}
+    base_models = ["gpt-6.2-sol", "gpt-6.2-astra"]
+    efforts = ["low", "medium", "high", "xhigh", "max"]
+    expected_requests: list[dict[str, str | None]] = []
+    state: list[dict[str, str | None]] = []
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self) -> None:
             payload = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
-            state["path"] = self.path
-            state["model"] = payload["model"]
-            state["authorization"] = self.headers.get("Authorization")
+            state.append(
+                {
+                    "path": self.path,
+                    "model": payload["model"],
+                    "authorization": self.headers.get("Authorization"),
+                }
+            )
             body = json.dumps(
                 {
                     "id": "chatcmpl-local-test",
@@ -179,31 +211,43 @@ def test_native_marimo_adapter_uses_the_selected_model_against_local_mock(
             _operator_env(
                 f"http://127.0.0.1:{server.server_port}/v1",
                 api_key,
-                f"first-local-model,{selected_model}",
+                "gpt-6.2-sol,gpt-6.2-astra",
             )
         )
         ai = config["ai"]
-        selected_id = f"mgts/{selected_model}"
 
         from marimo._server.ai.config import AnyProviderConfig
         from marimo._server.ai.providers import get_completion_provider
-        from pydantic_ai import Agent
 
-        provider_config = AnyProviderConfig.for_model(
-            selected_id,
-            ai,
-            secret_resolver=lambda name: api_key if name == AI_API_KEY_ENV else None,
-        )
-        provider = get_completion_provider(provider_config, selected_id)
-        agent = Agent(provider.create_model())
-        result = asyncio.run(agent.run("Reply with exactly LOCAL_OK."))
+        for base_model in base_models:
+            for effort in efforts:
+                model_name = f"{base_model}({effort})"
+                selected_id = f"mgts/{model_name}"
+                expected_requests.append(
+                    {
+                        "path": "/v1/chat/completions",
+                        "model": model_name,
+                        "authorization": f"Bearer {api_key}",
+                    }
+                )
+                provider_config = AnyProviderConfig.for_model(
+                    selected_id,
+                    ai,
+                    secret_resolver=lambda name: (
+                        api_key if name == AI_API_KEY_ENV else None
+                    ),
+                )
+                provider = get_completion_provider(provider_config, selected_id)
+                agent = provider.create_agent(
+                    name="local-model-selection-smoke",
+                    max_tokens=None,
+                    system_prompt="",
+                    enable_capabilities=False,
+                )
+                result = asyncio.run(agent.run("Reply with exactly LOCAL_OK."))
+                assert result.output == "LOCAL_OK"
 
-        assert result.output == "LOCAL_OK"
-        assert state == {
-            "path": "/v1/chat/completions",
-            "model": selected_model,
-            "authorization": f"Bearer {api_key}",
-        }
+        assert state == expected_requests
     finally:
         server.shutdown()
         server.server_close()

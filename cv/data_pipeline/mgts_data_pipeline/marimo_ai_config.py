@@ -17,7 +17,10 @@ AI_BASE_URL_ENV = "MGTS_MARIMO_AI_BASE_URL"
 AI_API_KEY_ENV = "MGTS_MARIMO_AI_API_KEY"
 AI_MODEL_IDS_ENV = "MGTS_MARIMO_AI_MODELS"
 PROVIDER_ID = "mgts"
-MAX_CONFIGURED_MODELS = 16
+ALLOWED_MODEL_IDS = ("gpt-6.2-sol", "gpt-6.2-astra")
+REASONING_EFFORTS = ("low", "medium", "high", "xhigh", "max")
+DEFAULT_REASONING_EFFORT = "high"
+MAX_CONFIGURED_MODELS = len(ALLOWED_MODEL_IDS)
 MAX_MODEL_ID_LENGTH = 128
 _MODEL_ID_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._:/@+-]*\Z")
 _TEMPLATE_PATH = Path(__file__).resolve().parents[1] / "marimo.toml"
@@ -36,7 +39,12 @@ def build_marimo_ai_config(env: Mapping[str, str]) -> dict[str, Any]:
 
     normalized_url = _validate_base_url(base_url)
     model_ids = _parse_model_ids(raw_model_ids)
-    qualified_models = [f"{PROVIDER_ID}/{model_id}" for model_id in model_ids]
+    qualified_models = [
+        f"{PROVIDER_ID}/{model_id}({effort})"
+        for model_id in model_ids
+        for effort in REASONING_EFFORTS
+    ]
+    default_model = f"{PROVIDER_ID}/{model_ids[0]}({DEFAULT_REASONING_EFFORT})"
 
     ai["enabled"] = True
     ai["custom_providers"] = {
@@ -48,9 +56,9 @@ def build_marimo_ai_config(env: Mapping[str, str]) -> dict[str, Any]:
     ai["models"] = {
         "displayed_models": qualified_models,
         "custom_models": qualified_models,
-        "chat_model": qualified_models[0],
-        "edit_model": qualified_models[0],
-        "autocomplete_model": qualified_models[0],
+        "chat_model": default_model,
+        "edit_model": default_model,
+        "autocomplete_model": default_model,
     }
     return config
 
@@ -112,6 +120,7 @@ def _parse_model_ids(value: str) -> list[str]:
         not model_ids
         or len(model_ids) > MAX_CONFIGURED_MODELS
         or len(set(model_ids)) != len(model_ids)
+        or set(model_ids) != set(ALLOWED_MODEL_IDS)
         or any(
             not model_id
             or len(model_id) > MAX_MODEL_ID_LENGTH
