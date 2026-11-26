@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core import storage
 from app.core.config import settings
 from app.core.errors import AppError
-from app.core.processing import STATUS_AWAITING, remove_processed_image
+from app.core.processing import STATUS_AWAITING, STATUS_PROCESSING, remove_processed_image
 from app.models.defect import Defect
 from app.models.infrastructure_object import PHOTO_KEY_PREFIX, InfrastructureObject
 from app.models.status import Status
@@ -176,6 +176,33 @@ async def remove_object_photo(
         await storage.delete_object(key)
     remove_processed_image(processed_url, settings.uploads_path)
 
+    return obj
+
+
+async def requeue_object(session: AsyncSession, object_id: int) -> InfrastructureObject:
+    """Queue one supported photo for reprocessing, without replacing current results."""
+    obj = await session.scalar(
+        select(InfrastructureObject)
+        .where(InfrastructureObject.id == object_id)
+        .with_for_update()
+    )
+    if obj is None:
+        raise AppError(404, "Объект не найден", f"Объект с id={object_id} не существует.")
+    if obj.processing_status == STATUS_PROCESSING:
+        raise AppError(409, "Объект уже обрабатывается", "Дождитесь завершения текущей обработки.")
+
+    key = obj.img_key or ""
+    has_managed_photo = key.startswith(f"{PHOTO_KEY_PREFIX}{object_id}/")
+    has_legacy_upload = key.startswith("/uploads/raw/")
+    if not (has_managed_photo or has_legacy_upload):
+        raise AppError(409, "Нет фото для обработки", "Объекту требуется фото в поддерживаемом формате.")
+
+    obj.processing_status = STATUS_AWAITING
+    obj.processing_started_at = None
+    obj.processing_attempts = 0
+    obj.processing_error = None
+    await session.commit()
+    await session.refresh(obj)
     return obj
 
 

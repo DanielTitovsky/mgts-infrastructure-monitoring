@@ -29,6 +29,16 @@ async def get_object(object_id: int, session: SessionDep):
 
 
 @router.post(
+    "/{object_id}/reprocess",
+    response_model=Envelope[InfrastructureObjectRead],
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Повторно поставить фото объекта в очередь обработки",
+)
+async def reprocess_object(object_id: int, session: SessionDep):
+    return ok(await object_service.requeue_object(session, object_id))
+
+
+@router.post(
     "",
     response_model=Envelope[InfrastructureObjectRead],
     status_code=status.HTTP_201_CREATED,

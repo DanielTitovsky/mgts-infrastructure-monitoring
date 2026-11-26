@@ -51,3 +51,32 @@ The user selected an alternative to Deploy keys because neither available GitHub
 The Compose model is derived from `docker compose -f compose.dokploy.yml config --no-interpolate --format json`; preserve secret placeholders and use the existing protected Dokploy environment. Strip generated project-level network/volume names so deployment data remains isolated. Build contexts point to `/etc/dokploy/compose/mgts-preview-current-fnnfi5/source-4065ab8/{backend,frontend}`. That directory was populated through the Dokploy server operator from `git archive 4065ab8c30199aec8b94944ab3950570cfeef749 backend frontend`. Dokploy performs the actual build and start, on the existing build/runtime host. No GitHub credential is embedded in a URL or image, and no runtime source bind mounts are used.
 
 Direct worktree contexts failed because the Dokploy user cannot traverse the private home directory; do not relax home permissions. Use a revision-specific archive in the managed service directory. For the raw Compose model, project the canonical bcrypt hash into gateway environment with each `$` escaped as `$$`. In JavaScript use `split('$').join('$$')`, not a replacement string whose `$$` means one dollar. Never reuse sanitized MCP `get_compose.composeFile` as writable configuration: it contains `[redacted]`; regenerate from the repository. The normal Git source remains a future option if repository read access is provisioned. This is a temporary manual source-delivery workflow, not automatic CI. Trusted public HTTPS: https://mgts.159.195.51.237.sslip.io/admin. The original traefik.me hostname hit the shared certificate issuance limit; sslip.io is used publicly while upstream TLS keeps its pinned CA and original SNI. Gateway account is `admin`, application account is `admin`; passwords stay in the canonical secret store. Synthetic example records are not real inspection results. Historical JWT-cookie candidate evidence: the hosted JWT lifetime was set to 30 days, but browser-managed HTTP Basic credentials have no application-guaranteed duration.
+
+## Resident photo worker candidate
+
+The Dokploy Compose candidate adds a persistent CPU worker with the existing
+`db`, `schema-init`, and MinIO dependencies. It reuses the existing
+`MGTS_DB_PASSWORD` and `MGTS_STORAGE_PASSWORD` projections, the `mgts-preview`
+bucket, and the same `uploads` volume as the API. It publishes no worker, DB, or
+MinIO ports and does not invoke `seed.py` or perform queue/database resets.
+The worker remains on the same Compose default network as the API and uses the
+existing `http://minio:9000` endpoint and storage credentials. It does not join
+the separate Marimo dataset-reader network/proxy, which is read-only and serves
+a different bucket. Its checkpoint mount is read-only.
+
+For the existing raw/archive Dokploy source path, the revision-specific source
+archive used to build this candidate must include
+`cv/ml/yolo-v/2-version.pt` in addition to the required backend/frontend build
+contexts so the Compose bind mount resolves. The weight is not copied into the
+worker image. The selected tracked checkpoint contains `Broken`, `Good`,
+`Lose`, `Uncovered`, and pole/hardware classes; it is not a cabinet-specific
+detector. `odn_pole` is treated only as support-object localization and requires
+review, not as a defect or a cabinet-condition assessment.
+
+An authenticated `POST /api/infrastructure-objects/{id}/reprocess` queues only
+that object, returns `202`, and requires a supported photo key and an inactive
+job. It needs no API/worker restart. `409` rejects an active job or unsupported
+photo; this operation does not update any other queue row. Compose source and
+model metadata checks are not runtime proof: verify the actual Dokploy
+deployment and process the existing queue through the authorized operator
+before claiming hosted inference works.

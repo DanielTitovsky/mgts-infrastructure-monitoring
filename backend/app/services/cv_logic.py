@@ -39,6 +39,9 @@ class ClassRule:
 
 
 CLASS_RULES: dict[str, ClassRule] = {
+    # Generic pole-localization class (from the optional workbench checkpoint) is not a defect.
+    "odn_pole": ClassRule(kind="object", object_type="support"),
+
     # --- Колодцы (кабельные колодцы / люки): у модели есть оценка состояния ---
     "Good":      ClassRule(kind="object", object_type="cable_manhole"),  # исправная крышка
     "Broken":    ClassRule("defect", "cable_manhole", severity="high",   action="repair"),  # сломана крышка
